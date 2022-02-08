@@ -60,7 +60,7 @@ class ModelField:
     self.H = None # homography matrix
     self.gui_state = GuiState.STATE_CORNERS
 
-    self._write_hint("choose the bottom left corner")
+    self._write_hint("choose the upper left corner")
 
     # cv.namedWindow("GUI", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO)
     cv.namedWindow("GUI")
@@ -90,11 +90,11 @@ class ModelField:
           curr_click = self.clicks[-1]
           self.original_img = cv.circle(self.original_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
           if len(self.clicks) == 1:
-            self._write_hint("choose the upper left corner")
-          elif len(self.clicks) == 2:
             self._write_hint("choose the upper right corner")
-          elif len(self.clicks) == 3:
+          elif len(self.clicks) == 2:
             self._write_hint("choose the bottom right corner")
+          elif len(self.clicks) == 3:
+            self._write_hint("choose the bottom left corner")
 
         if len(self.clicks) == 4:
           pts1 = np.float32(self.clicks)
