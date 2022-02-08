@@ -3,19 +3,19 @@ import numpy as np
 from enum import Enum
 import imutils
 
-
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)
 T_GOAL_CM = 244 # goal real height in cm
 T_PLAYER_CM = 190 # Player real height in cm
+SOCCER_HEIGHT_M = 68 # Soccer pitch in meters
+SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3 # thickness of drawings
-SOCCER_HEIGHT_M = 68 # Soccer pitch in meters
-SOCCER_WIDTH_M = 108
 SAMPLES_PER_METER = 1
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
+GUI_WIDTH = 1500
 
 class BoundingBox:
   def __init__(self, tl, br):
@@ -33,7 +33,6 @@ class Particle:
     self.a = a # appearance model
     self.e = e # the probability of containing a player
 
-
 class GuiState(Enum):
   STATE_CORNERS = 1,
   STATE_GOAL = 2,
@@ -41,10 +40,10 @@ class GuiState(Enum):
 class ModelField:
   def __init__(self, img):
     self.original_img = img.copy()
+    self.original_img_without_BBs = img.copy()
 
-    # self.gui_img = imutils.resize(img, width=1280)
     self.gui_img = img.copy()
-    self.gui_img = cv.copyMakeBorder(self.gui_img, 50, 0, 0, 0, cv.BORDER_CONSTANT, value=0)
+    self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
     
     self.grid = cv.imread("../../data/imgs/pitch/h.png") # modelfield image (Top view)
     self.grid_res_w = self.grid.shape[1]
@@ -71,20 +70,25 @@ class ModelField:
       if cv.waitKey(100) == ord('q'):
         break
   
-  def _write_hint(self, msg):    
+  def _write_hint(self, msg, color=(0,0,0)):    
     cv.rectangle(self.gui_img, (10, 2), (300,20), (255,255,255), -1)
     cv.putText(self.gui_img, msg, (15, 15),
-                cv.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+                cv.FONT_HERSHEY_SIMPLEX, 0.5 , color)
+  
+  def _gui2orig(self, p):
+    x = p[0] * self.original_img.shape[1] // self.gui_img.shape[1]
+    y = p[1] * self.original_img.shape[0] // self.gui_img.shape[0] 
+    return (x, y)
 
   def click_event(self, event, x, y, flags, params):
     # checking for left mouse clicks
     if event == cv.EVENT_LBUTTONDOWN:
-      self.clicks.append((x, y))
+      self.clicks.append(self._gui2orig((x, y)))
             
       if self.gui_state == GuiState.STATE_CORNERS:
         if len(self.clicks) <= 4:
           curr_click = self.clicks[-1]
-          self.gui_img = cv.circle(self.gui_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
+          self.original_img = cv.circle(self.original_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
           if len(self.clicks) == 1:
             self._write_hint("choose the upper left corner")
           elif len(self.clicks) == 2:
@@ -114,7 +118,7 @@ class ModelField:
         elif len(self.clicks) == 2:
           u_bottom = self.clicks[0]
           u_top = self.clicks[1]
-          cv.line(self.gui_img, u_bottom, u_top, RED_COLOR, THICKNESS)
+          cv.line(self.original_img, u_bottom, u_top, RED_COLOR, THICKNESS)
 
           # equation (3.3)
           dst_u_bt = self._euclidean_distance(u_bottom, u_top)
@@ -124,7 +128,9 @@ class ModelField:
           self.s = self._construct_modelfield_img(self.H)
 
           cv.imwrite("modelfield.png", self.grid)
-          cv.imwrite("result.png", self.gui_img)
+          cv.imwrite("result.png", self.original_img)
+          self._write_hint("Done", RED_COLOR)
+
 
 
   def _min_dist_line_point(self, L, p):
@@ -163,7 +169,7 @@ class ModelField:
     x = int((d - b) / (a - c))
     y = int(a * x + b)
 
-    cv.line(self.gui_img, (0, y), (self.gui_img.shape[1], y), RED_COLOR, THICKNESS)
+    cv.line(self.original_img, (0, y), (self.original_img.shape[1], y), RED_COLOR, THICKNESS)
 
     return 0, y
 
@@ -185,15 +191,16 @@ class ModelField:
         br = (int(q_img[0] + BB_width // 2), int(q_img[1])) 
         
         B = BoundingBox(tl, br)
-        a = self.original_img[tl[1]:int(tl[1]+BB_height), tl[0]:int(tl[0]+BB_width)]
-        # cv.imwrite(f"BBs/BB_{row}_{col}.png", a)
+        a = self.original_img_without_BBs[tl[1]:int(tl[1]+BB_height), tl[0]:int(tl[0]+BB_width)]
+        # save the bounding boxes. Warning: computational intensive 
+        # cv.imwrite(f"BBs/BB_{row}_{col}.png", a) 
         s = Particle(q, q_img, B, a)
 
         s_total.append(s)
 
-        B.draw(self.gui_img)
+        B.draw(self.original_img)
         self.grid = cv.circle(self.grid, q, 2, BLUE_COLOR, cv.FILLED)
-        self.gui_img = cv.circle(self.gui_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
+        self.original_img = cv.circle(self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
 
     return s_total
 
