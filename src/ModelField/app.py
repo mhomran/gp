@@ -10,12 +10,11 @@ img = None
 if __name__=="__main__":
 
   # reading the image
-  img = cv.imread('sample2.png')
-  cv.imwrite('sample2_resized.png', img)
+  img = cv.imread('../../data/imgs/stitched/sample1.png')
+  img = imutils.resize(img, width=960)
 
   ModelField(img)
 
-  # close the window
   cv.destroyAllWindows()
 
 
