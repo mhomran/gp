@@ -19,21 +19,18 @@ def warpImages(lframe, rframe, H, ref="r"):
   ref_corners = l_corners if ref=="l" else r_corners
   total_corners = np.concatenate((ref_corners, tr_corners), axis=0)
 
-  [x_min, y_min] = np.int32(total_corners.min(axis=0).ravel() - 0.5)
-  [x_max, y_max] = np.int32(total_corners.max(axis=0).ravel() + 0.5)
+  [x_min, y_min] = np.int32(total_corners.min(axis=0).ravel())
+  [x_max, y_max] = np.int32(total_corners.max(axis=0).ravel())
   
-  
+  translation_dist = [-x_min,-y_min]
+  H_translation = np.array([[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]])
   if ref == 'l':
-    translation_dist = [-x_min,-y_min]
-    H_translation = np.array([[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]])
     output_img = cv.warpPerspective(rframe, H_translation.dot(H), (x_max-x_min, y_max-y_min))
     output_img[translation_dist[1]:l_rows+translation_dist[1], translation_dist[0]:l_cols+translation_dist[0]] = lframe
   else:
-    translation_dist = [-x_min,-y_min]
-    H_translation = np.array([[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]])
     output_img = cv.warpPerspective(lframe, H_translation.dot(H), (x_max-x_min, y_max-y_min))
     output_img[translation_dist[1]:r_rows+translation_dist[1], translation_dist[0]:r_cols+translation_dist[0]] = rframe
-
+  
   return output_img
 
 def stitch(frames, M=None, ref="r"):
@@ -43,28 +40,25 @@ def stitch(frames, M=None, ref="r"):
     result = warpImages(lframe, rframe, M, ref)
     return result
 
-  # Create our ORB detector and detect keypoints and descriptors
-  orb = cv.ORB_create(nfeatures=2000)
+  # Initiate SIFT detector
+  sift = cv.SIFT_create()
 
-  # Find the key points and descriptors with ORB
-  lframe_kp, lframe_desc = orb.detectAndCompute(lframe, None)
-  rframe_kp, rframe_desc = orb.detectAndCompute(rframe, None)
+  # find the keypoints and descriptors with SIFT
+  lframe_kp, lframe_desc = sift.detectAndCompute(lframe, None)
+  rframe_kp, rframe_desc = sift.detectAndCompute(rframe, None)
 
-  # Create a BFMatcher object.
-  # It will find all of the matching keypoints on two images
-  bf = cv.BFMatcher_create(cv.NORM_HAMMING)
-
-  # Find matching points
-  matches = []
+  # BFMatcher with default params
+  bf = cv.BFMatcher()
   if ref == 'r':
     matches = bf.knnMatch(lframe_desc, rframe_desc, k=2)
   else:
     matches = bf.knnMatch(rframe_desc, lframe_desc, k=2)
-  
+
+  # Apply ratio test
   good = []
-  for m, n in matches:
-    if m.distance < 0.8 * n.distance:
-        good.append(m)
+  for m,n in matches:
+    if m.distance < 0.75*n.distance:
+      good.append(m)
 
   # Set minimum match condition
   MIN_MATCH_COUNT = 10
@@ -74,14 +68,14 @@ def stitch(frames, M=None, ref="r"):
     src_pts = None
     dst_pts = None
     if ref == "r":
-      src_pts = np.float32([ lframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-      dst_pts = np.float32([ rframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+      src_pts = np.float32([lframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
+      dst_pts = np.float32([rframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
     else:
-      src_pts = np.float32([ rframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-      dst_pts = np.float32([ lframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+      src_pts = np.float32([rframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
+      dst_pts = np.float32([lframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
     # Establish a homography
-    M, _ = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
+    M, _ = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     
     result = warpImages(lframe, rframe, M, ref)
 
