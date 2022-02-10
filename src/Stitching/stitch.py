@@ -5,14 +5,12 @@ import imutils
 import math
 
 def warpImages(lframe, rframe, H, ref="r"):
-  l_rows, l_cols = lframe.shape[:2]
-  r_rows, r_cols = rframe.shape[:2]
+  l_height, l_width = lframe.shape[:2]
+  r_height, r_width = rframe.shape[:2]
 
-  r_corners = np.float32([[0,0], [0, r_rows], [r_cols, r_rows], [r_cols, 0]]).reshape(-1, 1, 2)
-  l_corners = np.float32([[0,0], [0, l_rows], [l_cols, l_rows], [l_cols, 0]]).reshape(-1, 1, 2)
+  r_corners = np.float32([[0,0], [0, r_height], [r_width, r_height], [r_width, 0]]).reshape(-1, 1, 2)
+  l_corners = np.float32([[0,0], [0, l_height], [l_width, l_height], [l_width, 0]]).reshape(-1, 1, 2)
 
-  # When we have established a homography we need to warp perspective
-  # Change field of view
   tr_corners = r_corners if ref=="l" else l_corners
   tr_corners = cv.perspectiveTransform(tr_corners, H)
 
@@ -22,14 +20,14 @@ def warpImages(lframe, rframe, H, ref="r"):
   [x_min, y_min] = np.int32(total_corners.min(axis=0).ravel())
   [x_max, y_max] = np.int32(total_corners.max(axis=0).ravel())
   
-  translation_dist = [-x_min,-y_min]
-  H_translation = np.array([[1, 0, translation_dist[0]], [0, 1, translation_dist[1]], [0, 0, 1]])
+  trans_dist = [-x_min, -y_min]
+  H_translation = np.array([[1, 0, trans_dist[0]], [0, 1, trans_dist[1]], [0, 0, 1]])
   if ref == 'l':
     output_img = cv.warpPerspective(rframe, H_translation.dot(H), (x_max-x_min, y_max-y_min))
-    output_img[translation_dist[1]:l_rows+translation_dist[1], translation_dist[0]:l_cols+translation_dist[0]] = lframe
+    output_img[trans_dist[1]:l_height+trans_dist[1], trans_dist[0]:l_width+trans_dist[0]] = lframe
   else:
     output_img = cv.warpPerspective(lframe, H_translation.dot(H), (x_max-x_min, y_max-y_min))
-    output_img[translation_dist[1]:r_rows+translation_dist[1], translation_dist[0]:r_cols+translation_dist[0]] = rframe
+    output_img[trans_dist[1]:r_height+trans_dist[1], trans_dist[0]:r_width+trans_dist[0]] = rframe
   
   return output_img
 
@@ -49,10 +47,7 @@ def stitch(frames, M=None, ref="r"):
 
   # BFMatcher with default params
   bf = cv.BFMatcher()
-  if ref == 'r':
-    matches = bf.knnMatch(lframe_desc, rframe_desc, k=2)
-  else:
-    matches = bf.knnMatch(rframe_desc, lframe_desc, k=2)
+  matches = bf.knnMatch(lframe_desc, rframe_desc, k=2)
 
   # Apply ratio test
   good = []
@@ -65,15 +60,12 @@ def stitch(frames, M=None, ref="r"):
 
   if len(good) > MIN_MATCH_COUNT:
     # Convert keypoints to an argument for findHomography
-    src_pts = None
-    dst_pts = None
-    if ref == "r":
-      src_pts = np.float32([lframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-      dst_pts = np.float32([rframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
-    else:
-      src_pts = np.float32([rframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-      dst_pts = np.float32([lframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+    lframe_kp = np.float32([lframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
+    rframe_kp = np.float32([rframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
+    src_pts = rframe_kp if ref == 'l' else lframe_kp
+    dst_pts = lframe_kp if ref == 'l' else rframe_kp
+    
     # Establish a homography
     M, _ = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     
