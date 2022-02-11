@@ -2,8 +2,13 @@ import cv2 as cv
 import numpy as np
 import time
 import imutils
-import math
 from stitcher import *
+from undistorter import Undistorter
+
+# undistortion parameter
+lk1 = -.00008 # the higher, the lesser Barrel distortion
+mk1 = -.00005 
+rk1 = -.00005  
 
 def preprocess(colored_src, mask=None):
   if mask is not None:
@@ -36,36 +41,7 @@ def preprocess(colored_src, mask=None):
 
   return colored_src, mask
 
-def undistort(img, k1, map_x=None, map_y=None):
-  if map_x is not None and map_y is not None:
-    new_img = cv.remap(img, map_x, map_y, cv.INTER_LINEAR)
-    return new_img
 
-  r = lambda x_d, y_d, c_x, c_y: math.sqrt(((x_d - c_x) ** 2) + ((y_d - c_y) ** 2))
-  x_img = lambda x_d, c_x, r, k_1: c_x + (1 + k_1*r)*(x_d - c_x)
-  y_img = lambda y_d, c_y, r, k_1: c_y + (1 + k_1*r)*(y_d - c_y)
-
-  h, w, _ = img.shape
-  c_x = w//2
-  c_y = h//2
-  new_img = np.zeros_like(img)
-  map_x = np.zeros((img.shape[0], img.shape[1]), dtype=np.float32)
-  map_y = np.zeros((img.shape[0], img.shape[1]), dtype=np.float32)  
-  for x_d in range(w):
-    for y_d in range(h):
-      new_x = x_img(x_d, c_x, r(x_d, y_d, c_x, c_y), k1)
-      new_y = y_img(y_d, c_y, r(x_d, y_d, c_x, c_y), k1)
-      
-      map_x[y_d, x_d] = new_x
-      map_y[y_d, x_d] = new_y
-  
-  new_img = cv.remap(img, map_x, map_y, cv.INTER_LINEAR)
-
-  return new_img, map_x, map_y
-
-rmap_x = rmap_y = None # undistortion matrices
-lmap_x = lmap_y = None # undistortion matrices
-mmap_x = mmap_y = None # undistortion matrices
 result = None
 out = None
 out_w = None
@@ -96,7 +72,15 @@ if __name__ == "__main__":
   lm_stitcher = Stitcher("r")
   mr_stitcher = Stitcher("l")
   lmr_stitcher = Stitcher("l")
+
+  l_undistorter = Undistorter(lk1)
+  m_undistorter = Undistorter(mk1)
+  r_undistorter = Undistorter(rk1)
   
+  lframe_gpu = cv.cuda_GpuMat()
+  mframe_gpu = cv.cuda_GpuMat()
+  rframe_gpu = cv.cuda_GpuMat()
+
   frame_count = 0
   prev_seconds = 0
   # Read until video is completed
@@ -109,33 +93,30 @@ if __name__ == "__main__":
     frame_count += 1
     
     if lret == True and rret == True and mret == True:
+      # upload on GPU
+      lframe_gpu.upload(lframe)
+      mframe_gpu.upload(mframe)
+      rframe_gpu.upload(rframe)      
 
       # resize
       h, w, _ = lframe.shape
-      lframe = imutils.resize(lframe, width=w//2)
-      mframe = imutils.resize(mframe, width=w//2)
-      rframe = imutils.resize(rframe, width=w//2)
+      nw = w//2
+      nh = int(h/w*nw)
+      lframe_gpu = cv.cuda.resize(lframe_gpu, (nw, nh))
+      mframe_gpu = cv.cuda.resize(mframe_gpu, (nw, nh))
+      rframe_gpu = cv.cuda.resize(rframe_gpu, (nw, nh))
 
       # undistort
-      lk1 = -.00008 # the higher, the lesser Barrel distortion
-      mk1 = -.00005 
-      rk1 = -.00005  
-      if lmap_x is None:
-        lframe, lmap_x, lmap_y = undistort(lframe, lk1)
-        mframe, mmap_x, mmap_y = undistort(mframe, mk1)
-        rframe, rmap_x, rmap_y = undistort(rframe, rk1)
-      else:
-        lframe = undistort(lframe, lk1, map_x=lmap_x, map_y=lmap_y)
-        mframe = undistort(mframe, mk1, map_x=mmap_x, map_y=mmap_y)
-        rframe = undistort(rframe, rk1, map_x=rmap_x, map_y=rmap_y)
+      lframe_gpu = l_undistorter.undistort(lframe_gpu)
+      mframe_gpu = m_undistorter.undistort(mframe_gpu)
+      rframe_gpu = r_undistorter.undistort(rframe_gpu)
+      lframe = lframe_gpu.download()
+      mframe = mframe_gpu.download()
+      rframe = rframe_gpu.download()
 
-      # cv.imwrite("lud.png", lframe)
-      # cv.imwrite("mud.png", mframe)
-      # cv.imwrite("rud.png", rframe)
-
-      lm_res = lm_stitcher.stitch(lframe, mframe)
-      mr_res = mr_stitcher.stitch(mframe, rframe)
-      result = lmr_stitcher.stitch(lm_res, mr_res)
+      lm_res, lm_res_gpu = lm_stitcher.stitch(lframe, mframe, lframe_gpu, mframe_gpu)
+      mr_res, mr_res_gpu = mr_stitcher.stitch(mframe, rframe, mframe_gpu, rframe_gpu)
+      result, _ = lmr_stitcher.stitch(lm_res, mr_res, lm_res_gpu, mr_res_gpu)
 
       # cv.imwrite("stitched.png", result)
 
@@ -151,7 +132,9 @@ if __name__ == "__main__":
         out_h = result.shape[0]
         out = cv.VideoWriter('output.avi', cv.VideoWriter_fourcc('M','J','P','G'), fps, (out_w, out_h))
 
-      out.write(result)
+      # out.write(result)
+      cv.imshow("result", imutils.resize(result, width=1200))
+      cv.waitKey(1)
       # cv.imwrite("result.png", result)
       # break
 
