@@ -1,0 +1,20 @@
+import cv2 as cv
+import numpy as np
+import time
+from PlayerTracker.player_tracker import PlayerTracker
+
+start_time = time.time()
+if __name__ == "__main__":
+
+  np.seterr(divide='ignore', invalid='ignore')
+
+  lcap = cv.VideoCapture('../data/videos/NewCam/L.mp4')
+  mcap = cv.VideoCapture('../data/videos/NewCam/C.mp4')
+  rcap = cv.VideoCapture('../data/videos/NewCam/R.mp4')
+
+  tracker = PlayerTracker(lcap, mcap, rcap)
+  tracker.run()
+    
+  lcap.release()
+  rcap.release()
+  mcap.release()

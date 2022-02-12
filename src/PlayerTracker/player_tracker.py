@@ -1,5 +1,5 @@
-from stitcher import Stitcher
-from undistorter import Undistorter
+from Stitcher.stitcher import Stitcher
+from Undistorter.undistorter import Undistorter
 import cv2 as cv
 import time
 import imutils
