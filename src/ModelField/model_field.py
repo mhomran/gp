@@ -15,7 +15,7 @@ THICKNESS = 3 # thickness of drawings
 SAMPLES_PER_METER = 1
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
-GUI_WIDTH = 1500
+GUI_WIDTH = 1200
 
 class BoundingBox:
   def __init__(self, tl, br):

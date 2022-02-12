@@ -159,9 +159,9 @@ start_time = time.time()
 if __name__ == "__main__":
   np.seterr(divide='ignore', invalid='ignore')
 
-  lcap = cv.VideoCapture('../../data/videos/NewCam/L.mp4')
-  mcap = cv.VideoCapture('../../data/videos/NewCam/C.mp4')
-  rcap = cv.VideoCapture('../../data/videos/NewCam/R.mp4')
+  lcap = cv.VideoCapture('../../data/videos/L.mp4')
+  mcap = cv.VideoCapture('../../data/videos/C.mp4')
+  rcap = cv.VideoCapture('../../data/videos/R.mp4')
 
   if (lcap.isOpened()== False) or (rcap.isOpened()== False) or (mcap.isOpened()== False): 
     raise("Error opening video streams or files")
