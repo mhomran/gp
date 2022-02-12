@@ -1,4 +1,5 @@
 import cv2 as cv
+import imutils
 
 
 class ImageClass:
@@ -11,15 +12,15 @@ class ImageClass:
         frameId = int(self.cap.get(1))
         return ret, frame, frameId
 
-    def showImage(self, frame, windowName, resize=(960, 720)):
-        img = cv.resize(frame, resize)
+    def showImage(self, frame, windowName, width=1200):
+        img = imutils.resize(frame, width)
         cv.imshow(windowName, img)
 
     def writeImage(self, frame, imgName):
         cv.imwrite(imgName, frame)
 
     def resizeImage(self, frame, resize=(960, 720)):
-        img = cv.resize(frame, resize)
+        img = imutils.resize(frame, 1200)
         return img
 
     def writeTxt(self, frame):

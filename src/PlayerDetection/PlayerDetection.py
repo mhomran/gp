@@ -7,6 +7,12 @@ BACK_SUB_DETECT_SHADOW = False
 KERNEL_SIZE = (2, 2)
 
 
+class BoundingBox:
+    def __init__(self, tl, br):
+        self.tl = tl
+        self.br = br
+
+
 class PlayerDetction:
     def __init__(self):
         self.backSub = cv.createBackgroundSubtractorMOG2(
@@ -26,13 +32,28 @@ class PlayerDetction:
     def getContours(self, frame):
         edged = cv.Canny(frame, 30, 200)
         contours, _ = cv.findContours(edged,
-                                      cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+                                      cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
         self.contours = contours
         return contours
 
     def drawContours(self, frame):
+        BB = []
         for c in self.contours:
             rect = cv.boundingRect(c)
             x, y, w, h = rect
-            cv.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 3)
+            if(w*h < 20):
+                continue
+
+            tl = (x, y)
+            br = (x+w, y+h)
+            B = BoundingBox(tl, br)
+            BB.append(B)
+
+            cv.rectangle(frame, tl, br, (0, 0, 255), 1)
+            cv.circle(frame, tl, radius=1, color=(255, 0, 0), thickness=-1)
+        self.BB = BB
+
         return frame
+
+    def getBoundingBoxes(self):
+        return self.BB
