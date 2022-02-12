@@ -45,7 +45,7 @@ class ModelField:
     self.gui_img = img.copy()
     self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
     
-    self.grid = cv.imread("../../data/imgs/pitch/h.png") # modelfield image (Top view)
+    self.grid = cv.imread("../data/imgs/pitch/h.png") # modelfield image (Top view)
     self.grid_res_w = self.grid.shape[1]
     self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
     self.sample_inc_w = self.px_per_m_w // SAMPLES_PER_METER
@@ -59,16 +59,20 @@ class ModelField:
     self.hcam = None # camera height
     self.H = None # homography matrix
     self.gui_state = GuiState.STATE_CORNERS
+    
+    self.done = False
 
     self._write_hint("choose the upper left corner")
 
-    # cv.namedWindow("GUI", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO)
     cv.namedWindow("GUI")
     cv.setMouseCallback('GUI', self.click_event)
     while True:
       cv.imshow('GUI', self.gui_img)
-      if cv.waitKey(100) == ord('q'):
+      if self.done: 
+        cv.waitKey(2000)
+        cv.destroyAllWindows()
         break
+      cv.waitKey(1)
   
   def _write_hint(self, msg, color=(0,0,0)):    
     cv.rectangle(self.gui_img, (10, 2), (300,20), (255,255,255), -1)
@@ -130,6 +134,7 @@ class ModelField:
           cv.imwrite("modelfield.png", self.grid)
           cv.imwrite("result.png", self.original_img)
           self._write_hint("Done", RED_COLOR)
+          self.done = True
 
 
 

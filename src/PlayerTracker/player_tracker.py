@@ -1,5 +1,6 @@
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
+from ModelField.model_field import ModelField
 import cv2 as cv
 import time
 import imutils
@@ -52,6 +53,7 @@ class PlayerTracker:
     lmrframe, lmrframe_gpu = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
     
     # Model Field
+    ModelField(lmrframe)
 
     # Background
 
