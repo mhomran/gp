@@ -47,12 +47,56 @@ def getRatio(frame):
 
 def getDecision(p1, p2, p3):
     if(p1 < .15):
-        return False
+        return False, 0
     if(p2 < .15):
-        return False
+        return False, 0
     if(p3 < .15):
-        return False
-    return True
+        return False, 0
+
+    return True, round((p1+p2+p3)/3, 2)
+
+
+def IOU(B1, B2):
+
+    print("-----")
+    print(B1.br)
+    print(B1.tl)
+    dx = min(B1.br[0], B2.br[0]) - max(B1.tl[0], B2.tl[0])
+    dy = min(B1.br[1], B2.br[1]) - max(B1.tl[1], B2.tl[1])
+
+    area1 = (B1.br[0]-B1.tl[0])*(B1.br[1]-B1.tl[1])
+    area2 = (B2.br[0]-B2.tl[0])*(B2.br[1]-B2.tl[1])
+
+    print('--area--')
+    print(area1)
+    print(area2)
+    intersection = dx*dy
+    union = area1+area2-intersection
+
+    assert union != 0
+    print("-------")
+    print(intersection)
+    print(union)
+    print(round((intersection/union), 2))
+
+    return round((intersection/union), 2)
+
+
+def applyNonMax(particles):
+
+    i = 0
+    while(i < len(particles)):
+        j = i+1
+        while(j < len(particles)):
+            iou = IOU(particles[i].B, particles[j].B)
+            if(iou > .5):
+                particles.pop(j)
+                print('---remove---')
+                j = j-1
+            j = j+1
+        i = i+1
+    print(f"particles: {len(particles)}")
+    return particles
 
 
 while True:
@@ -67,47 +111,62 @@ while True:
     IMG.showImage(frame, "Frame")
 
     if(frameId > 300):
-        MFBB = {}
         openingImg = PD.opening(fgMask)
         PD.getContours(openingImg)
-        contourFrame = copy.deepcopy(frame)
+        contourFrame = frame.copy()
+        MFfrmae = frame.copy()
         PD.drawContours(contourFrame)
+
         IMG.showImage(contourFrame, "contours")
         BB = PD.getBoundingBoxes()
 
+        # loop on BBs
         for index, B in enumerate(BB):
+            MFBB = {}
             Sx = B.tl[0]
             Ex = B.br[0]
 
             Sy = B.tl[1]
             Ey = B.br[1]
 
+            # get all particle in BB
             for y in range(Sy, Ey+1):
                 for x in range(Sx, Ex+1):
                     if particles.get((x, y)):
                         MFBB[(x, y)] = particles[(x, y)]
-       
-        #filtered_MFBB = {}
-        i = 0
-        for particle in list(MFBB):
-            i = i+1
-            roi1, roi2, roi3 = _get_roi(MFBB[particle].B)
-            pRo1 = getRatio(fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
-            pRo2 = getRatio(fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
-            pRo3 = getRatio(fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
 
-            decision = getDecision(pRo1, pRo2, pRo3)
+            # draw BB
+            cv.rectangle(frame, B.tl,
+                         B.br, (0, 255, 0), 1)
+            IMG.showImage(frame, "BB")
 
-            if(decision):
-                # IMG.writeImage(
-                #     frame[roi1[0]:roi3[1], roi1[2]:roi1[3]], f'./output/{i}.png')
-                cv.rectangle(frame, MFBB[particle].B.tl,
-                             MFBB[particle].B.br, (255, 0, 0), 1)
+            # get candidate particle
+            NonMax = []
+            for particle in list(MFBB):
+                roi1, roi2, roi3 = _get_roi(MFBB[particle].B)
+                pRo1 = getRatio(fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
+                pRo2 = getRatio(fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
+                pRo3 = getRatio(fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
 
-        IMG.showImage(frame, "MFBB")
-        # keyboard = cv.waitKey(0)
-        # if keyboard == 'q' or keyboard == 27:
-        #     break
+                decision, ratio = getDecision(pRo1, pRo2, pRo3)
+
+                if(decision):
+                    MFBB[particle].ratio = ratio
+                    NonMax.append(MFBB[particle])
+
+            # apply nonmax supression
+            NonMax.sort(key=lambda x: x.ratio, reverse=True)
+            NonMax = applyNonMax(NonMax)
+
+            # draw particles
+            for particle in NonMax:
+                cv.rectangle(MFfrmae, particle.B.tl,
+                             particle.B.br, (255, 0, 0), 1)
+
+            IMG.showImage(MFfrmae, "MFBB")
+            keyboard = cv.waitKey(0)
+            if keyboard == 'q' or keyboard == 27:
+                break
 
     wait = 1
     if(frameId > 300):
