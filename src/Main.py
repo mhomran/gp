@@ -58,9 +58,8 @@ def getDecision(p1, p2, p3):
 
 def IOU(B1, B2):
 
-    print("-----")
-    print(B1.br)
-    print(B1.tl)
+    print("#####################")
+   
     dx = min(B1.br[0], B2.br[0]) - max(B1.tl[0], B2.tl[0])
     dy = min(B1.br[1], B2.br[1]) - max(B1.tl[1], B2.tl[1])
 
@@ -74,9 +73,10 @@ def IOU(B1, B2):
     union = area1+area2-intersection
 
     assert union != 0
-    print("-------")
+    print("---intersection/union----")
     print(intersection)
     print(union)
+    
     print(round((intersection/union), 2))
 
     return round((intersection/union), 2)
@@ -84,12 +84,14 @@ def IOU(B1, B2):
 
 def applyNonMax(particles):
 
+    print('---occlusion particles---')
+    print(len(particles))
     i = 0
     while(i < len(particles)):
         j = i+1
         while(j < len(particles)):
             iou = IOU(particles[i].B, particles[j].B)
-            if(iou > .5):
+            if(iou > .2):
                 particles.pop(j)
                 print('---remove---')
                 j = j-1
@@ -115,6 +117,7 @@ while True:
         PD.getContours(openingImg)
         contourFrame = frame.copy()
         MFfrmae = frame.copy()
+        MFBefore = frame.copy()
         PD.drawContours(contourFrame)
 
         IMG.showImage(contourFrame, "contours")
@@ -140,6 +143,7 @@ while True:
                          B.br, (0, 255, 0), 1)
             IMG.showImage(frame, "BB")
 
+           
             # get candidate particle
             NonMax = []
             for particle in list(MFBB):
@@ -154,6 +158,12 @@ while True:
                     MFBB[particle].ratio = ratio
                     NonMax.append(MFBB[particle])
 
+            for particle in NonMax:
+                cv.rectangle(MFBefore, particle.B.tl,
+                             particle.B.br, (255, 0, 0), 1)
+
+            IMG.showImage(MFBefore, "MFBeforeNonMax")
+
             # apply nonmax supression
             NonMax.sort(key=lambda x: x.ratio, reverse=True)
             NonMax = applyNonMax(NonMax)
@@ -163,14 +173,14 @@ while True:
                 cv.rectangle(MFfrmae, particle.B.tl,
                              particle.B.br, (255, 0, 0), 1)
 
-            IMG.showImage(MFfrmae, "MFBB")
+            IMG.showImage(MFfrmae, "MFBB After non max")
             keyboard = cv.waitKey(0)
             if keyboard == 'q' or keyboard == 27:
                 break
 
     wait = 1
     if(frameId > 300):
-        wait = 0
+        wait = 1
     keyboard = cv.waitKey(1)
     if keyboard == 'q' or keyboard == 27:
         break
