@@ -44,12 +44,16 @@ class Stitcher:
     if self.ref == 'l':
       output_img_gpu = cv.cuda.warpPerspective(rframe_gpu, trans_m.dot(self.h), self.out_shape)
       output_img = output_img_gpu.download()
-      output_img[self.trans_dist[1]:l_height+self.trans_dist[1], self.trans_dist[0]:l_width+self.trans_dist[0]] = lframe_gpu.download()
+      lframe = lframe_gpu.download()
+      ref_frame = output_img[self.trans_dist[1]:l_height+self.trans_dist[1], self.trans_dist[0]:l_width+self.trans_dist[0]] 
+      ref_frame[lframe > 0] = lframe[lframe > 0]
       output_img_gpu.upload(output_img)
     else:
       output_img_gpu = cv.cuda.warpPerspective(lframe_gpu, trans_m.dot(self.h), self.out_shape)
       output_img = output_img_gpu.download()
-      output_img[self.trans_dist[1]:r_height+self.trans_dist[1], self.trans_dist[0]:r_width+self.trans_dist[0]] = rframe_gpu.download()
+      rframe = rframe_gpu.download()
+      ref_frame = output_img[self.trans_dist[1]:r_height+self.trans_dist[1], self.trans_dist[0]:r_width+self.trans_dist[0]]
+      ref_frame[rframe > 0] = rframe[rframe > 0]
       output_img_gpu.upload(output_img)
       
     return output_img, output_img_gpu

@@ -8,9 +8,9 @@ if __name__ == "__main__":
 
   np.seterr(divide='ignore', invalid='ignore')
 
-  lcap = cv.VideoCapture('../data/videos/NewCam/L.mp4')
-  mcap = cv.VideoCapture('../data/videos/NewCam/C.mp4')
-  rcap = cv.VideoCapture('../data/videos/NewCam/R.mp4')
+  lcap = cv.VideoCapture('../data/videos/pyrVSmas/L.mp4')
+  mcap = cv.VideoCapture('../data/videos/pyrVSmas/C.mp4')
+  rcap = cv.VideoCapture('../data/videos/pyrVSmas/R.mp4')
 
   tracker = PlayerTracker(lcap, mcap, rcap)
   tracker.run()

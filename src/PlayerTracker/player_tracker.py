@@ -2,14 +2,13 @@ from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
 import cv2 as cv
-import time
 import imutils
 
 class PlayerTracker:
   # undistortion parameter
-  lk1 = -.00008 # the higher, the lesser Barrel distortion
-  mk1 = -.00005 
-  rk1 = -.00005
+  lk1 = -5e-06 
+  mk1 = 4.1e-05
+  rk1 = -1.5e-05
 
   RESIZE_FACTOR = 2
 
@@ -42,7 +41,6 @@ class PlayerTracker:
     self.r_undistorter = Undistorter(rframe, PlayerTracker.rk1)
     self._undistort()
     lframe, mframe, rframe = self._download_images_from_GPU()
-
 
     # Stitchers
     self.lm_stitcher = Stitcher(lframe, mframe, "r")
@@ -102,9 +100,9 @@ class PlayerTracker:
     w, h = self.lframe_gpu.size()
     nw = w//factor
     nh = int(h/w*nw)
-    self.lframe_gpu = cv.cuda.resize(self.lframe_gpu, (nw, nh))
-    self.mframe_gpu = cv.cuda.resize(self.mframe_gpu, (nw, nh))
-    self.rframe_gpu = cv.cuda.resize(self.rframe_gpu, (nw, nh))
+    self.lframe_gpu = cv.cuda.resize(self.lframe_gpu, (nw, nh), interpolation=cv.INTER_AREA)
+    self.mframe_gpu = cv.cuda.resize(self.mframe_gpu, (nw, nh), interpolation=cv.INTER_AREA)
+    self.rframe_gpu = cv.cuda.resize(self.rframe_gpu, (nw, nh), interpolation=cv.INTER_AREA)
 
   def _undistort(self):
     self.lframe_gpu = self.l_undistorter.undistort(self.lframe_gpu)
