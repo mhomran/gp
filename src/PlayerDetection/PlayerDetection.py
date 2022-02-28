@@ -2,7 +2,7 @@ from turtle import width
 import cv2 as cv
 import numpy as np
 import csv
-
+from imutils.object_detection import non_max_suppression
 BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
@@ -208,42 +208,34 @@ class PlayerDetction:
         return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH), pL, pR
 
     def loopOnBB(self):
+        candid = []
         for _, B in enumerate(self.BB):
             MFBB = self.getParticlesInBB(B)
             # draw BB
             cv.rectangle(self.frame, B.tl,
                          B.br, (0, 255, 0), 1)
-            self.IMG.showImage(self.frame, "BB")
 
             # get candidate particle
             NonMax = []
             for particle in list(MFBB):
                 self.getCandidateParticle(MFBB, particle,  NonMax)
+            candid = candid+NonMax
 
-            for particle in NonMax:
-                cv.rectangle(self.MFBefore, particle.B.tl,
-                             particle.B.br, (255, 0, 0), 1)
+        self.IMG.showImage(self.frame, "BB")
 
-            self.IMG.showImage(self.MFBefore, "MFBeforeNonMax")
+        rects = np.array([[particle.B.tl[0], particle.B.tl[1],
+                         particle.B.br[0], particle.B.br[1]] for particle in candid])
 
-            # apply nonmax supression
-            NonMax.sort(key=lambda x: x.ratio, reverse=True)
-            NonMax = self.applyNonMax(NonMax)
+        non_max = non_max_suppression(rects, probs=None, overlapThresh=IOU_TH)
+        for (x1, y1, x2, y2) in non_max:
+            cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
+        
+        self.IMG.showImage(self.MFfrmae, "MFBB After non max")
+        cv.waitKey(0)
 
-            self.outputPD = []
-            # draw particles
-            for particle in NonMax:
-                self.outputPD.append(particle)
-                cv.rectangle(self.MFfrmae, particle.B.tl,
-                             particle.B.br, (255, 0, 0), 1)
-                cv.rectangle(self.fgMask, particle.B.tl,
-                             particle.B.br, (255, 255, 255), 1)
-
-            self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-            #self.IMG.showImage(self.fgMask, "fgMask After non max")
-            # keyboard = cv.waitKey(0)
-            # if keyboard == 'q' or keyboard == 27:
-            #     break
+        self.outputPD = non_max
+        #self.IMG.showImage(self.MFfrmae, "MFBB After non max")
+        #self.IMG.showImage(self.fgMask, "fgMask After non max")
 
     def getOutputPD(self):
         return self.outputPD
