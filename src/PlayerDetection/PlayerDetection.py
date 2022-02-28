@@ -1,6 +1,7 @@
 from turtle import width
 import cv2 as cv
 import numpy as np
+import csv
 
 BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
@@ -18,6 +19,18 @@ class BoundingBox:
     def __init__(self, tl, br):
         self.tl = tl
         self.br = br
+
+
+class PlayerDetectionModel:
+    def __init__(self):
+        self.header = ['v1', 'v2', 'v3', 'hl', 'hr']
+        self.data = None
+
+    def saveModel(self):
+        with open('kmeans.csv', 'w', encoding='UTF8', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(self.header)
+            writer.writerows(self.data)
 
 
 class PlayerDetction:
@@ -44,9 +57,9 @@ class PlayerDetction:
         # will be removed
         self.setFramesForDisplay()
         frame = self.backSub.apply(frame)
-        #self.IMG.showImage(frame, "FGMASK")
+        # self.IMG.showImage(frame, "FGMASK")
         # shadow
-        #_, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
+        # _, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
         return frame
 
     def setFramesForDisplay(self):
@@ -177,10 +190,11 @@ class PlayerDetction:
         pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
         pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
         pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
+        decisionV, ratio = self.getDecision(pRo1, pRo2, pRo3)
 
-        decision, ratio = self.getDecision(pRo1, pRo2, pRo3)
+        decisionH, pL, pR = self.hoizontalCheck(MFBB[particle])
 
-        if(decision):
+        if(decisionV and decisionH):
             MFBB[particle].ratio = ratio
             NonMax.append(MFBB[particle])
 
@@ -191,7 +205,7 @@ class PlayerDetction:
         pR = self.getRatio(
             self.fgMask[roiR[0]:roiR[1], roiR[2]:roiR[3]])
 
-        return (pL < HORIZONTAL_TH or pR < HORIZONTAL_TH)
+        return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH), pL, pR
 
     def loopOnBB(self):
         for _, B in enumerate(self.BB):
@@ -219,9 +233,6 @@ class PlayerDetction:
             self.outputPD = []
             # draw particles
             for particle in NonMax:
-                if(self.hoizontalCheck(particle)):
-                    continue
-
                 self.outputPD.append(particle)
                 cv.rectangle(self.MFfrmae, particle.B.tl,
                              particle.B.br, (255, 0, 0), 1)

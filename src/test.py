@@ -1,17 +1,18 @@
-import cv2 as cv
-import imutils
+import csv
+header = ['name', 'area', 'country_code2', 'country_code3']
+data = [
+    ['Albania', 28748, 'AL', 'ALB'],
+    ['Algeria', 2381741, 'DZ', 'DZA'],
+    ['American Samoa', 199, 'AS', 'ASM'],
+    ['Andorra', 468, 'AD', 'AND'],
+    ['Angola', 1246700, 'AO', 'AGO']
+]
 
-hog = cv.HOGDescriptor()
-hog.setSVMDetector(cv.HOGDescriptor_getDefaultPeopleDetector())
-MFfrmae = cv.imread('./people.jpg')
-img = imutils.resize(MFfrmae, 1200)
+with open('countries.csv', 'w', encoding='UTF8', newline='') as f:
+    writer = csv.writer(f)
 
-boundingBoxes, wrights = hog.detectMultiScale(
-    img, winStride=(1, 1), padding=(8, 8), scale=1)
+    # write the header
+    writer.writerow(header)
 
-
-for (x, y, w, h) in boundingBoxes:
-    cv.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 3)
-
-cv.imshow('people', img)
-cv.waitKey(0)
+    # write multiple rows
+    writer.writerows(data)
