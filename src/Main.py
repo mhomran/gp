@@ -51,12 +51,6 @@ while True:
 #     pickle.dump(particles, f)
 # f.close()
 
-# roi = image[startY:endY, startX:endX]
 
-#  for index, B in enumerate(BB):
-#             start_X = B.tl[0]
-#             start_Y = B.tl[1]
-#             end_X = B.br[0]
-#             end_Y = B.br[1]
-#             IMG.showImage(
-#                 fgMask[start_Y:end_Y, start_X:end_X], str(index), (end_X-start_X)*4)
+
+

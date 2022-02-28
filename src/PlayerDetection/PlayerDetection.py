@@ -231,7 +231,7 @@ class PlayerDetction:
             cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
         
         self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        cv.waitKey(0)
+        #cv.waitKey(0)
 
         self.outputPD = non_max
         #self.IMG.showImage(self.MFfrmae, "MFBB After non max")
