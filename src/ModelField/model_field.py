@@ -12,7 +12,7 @@ SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3  # thickness of drawings
-SAMPLES_PER_METER = 1
+SAMPLES_PER_METER = 3
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
 GUI_WIDTH = 1200
@@ -216,15 +216,3 @@ class ModelField:
 
     def _get_particles(self):
         return self.s
-
-    def _get_roi(self, B):
-        start_X = B.tl[0]
-        start_Y = B.tl[1]
-        end_X = B.br[0]
-        end_Y = B.br[1]
-        height = end_Y-start_Y
-        inc = height//3
-        roi1 = (start_Y, start_Y+inc, start_X, end_X)
-        roi2 = (start_Y+inc, start_Y+2*inc, start_X, end_X)
-        roi3 = (start_Y+2*inc, end_Y, start_X, end_X)
-        return roi1, roi2, roi3

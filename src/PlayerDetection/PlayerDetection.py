@@ -1,3 +1,4 @@
+from turtle import width
 import cv2 as cv
 import numpy as np
 
@@ -6,6 +7,11 @@ BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
 
 KERNEL_SIZE = (2, 2)
+MIN_WIDTH_BB = 20
+
+VERTICAL_TH = .15
+HORIZONTAL_TH = .2
+IOU_TH = .2
 
 
 class BoundingBox:
@@ -31,12 +37,14 @@ class PlayerDetction:
         self.MFfrmae = None
         self.MFBefore = None
         self.contourFrame = None
+        self.outputPD = None
 
     def subBG(self, frame):
         self.frame = frame
         # will be removed
         self.setFramesForDisplay()
         frame = self.backSub.apply(frame)
+        #self.IMG.showImage(frame, "FGMASK")
         # shadow
         #_, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
         return frame
@@ -69,7 +77,7 @@ class PlayerDetction:
         for c in self.contours:
             rect = cv.boundingRect(c)
             x, y, w, h = rect
-            if(w*h < 20):
+            if(w*h < MIN_WIDTH_BB or w > h):
                 continue
 
             tl = (x, y)
@@ -85,7 +93,7 @@ class PlayerDetction:
     def getBoundingBoxes(self):
         return self.BB
 
-    def getRoi(self, B):
+    def vertRoi(self, B):
         start_X = B.tl[0]
         start_Y = B.tl[1]
         end_X = B.br[0]
@@ -97,6 +105,17 @@ class PlayerDetction:
         roi3 = (start_Y+2*inc, end_Y, start_X, end_X)
         return roi1, roi2, roi3
 
+    def horiRoi(self, B):
+        start_X = B.tl[0]
+        start_Y = B.tl[1]
+        end_X = B.br[0]
+        end_Y = B.br[1]
+        width = end_X-start_X
+        middleX = end_X-width//2
+        roiL = (start_Y, end_Y, start_X, middleX)
+        roiR = (start_Y, end_Y, middleX, end_X)
+        return roiL, roiR
+
     def getRatio(self, img):
         number_of_white_pix = np.sum(img == 255)
         number_of_black_pix = np.sum(img == 0)
@@ -106,11 +125,7 @@ class PlayerDetction:
         return percentage
 
     def getDecision(self, p1, p2, p3):
-        if(p1 < .15):
-            return False, 0
-        if(p2 < .15):
-            return False, 0
-        if(p3 < .15):
+        if(p1 < VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
             return False, 0
 
         return True, round((p1+p2+p3)/3, 2)
@@ -134,7 +149,7 @@ class PlayerDetction:
             j = i+1
             while(j < len(particles)):
                 iou = self.IOU(particles[i].B, particles[j].B)
-                if(iou > .2):
+                if(iou > IOU_TH):
                     particles.pop(j)
                     j = j-1
                 j = j+1
@@ -158,7 +173,7 @@ class PlayerDetction:
         return MFBB
 
     def getCandidateParticle(self, MFBB, particle,  NonMax):
-        roi1, roi2, roi3 = self.getRoi(MFBB[particle].B)
+        roi1, roi2, roi3 = self.vertRoi(MFBB[particle].B)
         pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
         pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
         pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
@@ -168,6 +183,15 @@ class PlayerDetction:
         if(decision):
             MFBB[particle].ratio = ratio
             NonMax.append(MFBB[particle])
+
+    def hoizontalCheck(self, particle):
+        roiL, roiR = self.horiRoi(particle.B)
+        pL = self.getRatio(
+            self.fgMask[roiL[0]:roiL[1], roiL[2]:roiL[3]])
+        pR = self.getRatio(
+            self.fgMask[roiR[0]:roiR[1], roiR[2]:roiR[3]])
+
+        return (pL < HORIZONTAL_TH or pR < HORIZONTAL_TH)
 
     def loopOnBB(self):
         for _, B in enumerate(self.BB):
@@ -192,12 +216,23 @@ class PlayerDetction:
             NonMax.sort(key=lambda x: x.ratio, reverse=True)
             NonMax = self.applyNonMax(NonMax)
 
+            self.outputPD = []
             # draw particles
             for particle in NonMax:
+                if(self.hoizontalCheck(particle)):
+                    continue
+
+                self.outputPD.append(particle)
                 cv.rectangle(self.MFfrmae, particle.B.tl,
                              particle.B.br, (255, 0, 0), 1)
+                cv.rectangle(self.fgMask, particle.B.tl,
+                             particle.B.br, (255, 255, 255), 1)
 
             self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-            keyboard = cv.waitKey(0)
-            if keyboard == 'q' or keyboard == 27:
-                break
+            #self.IMG.showImage(self.fgMask, "fgMask After non max")
+            # keyboard = cv.waitKey(0)
+            # if keyboard == 'q' or keyboard == 27:
+            #     break
+
+    def getOutputPD(self):
+        return self.outputPD

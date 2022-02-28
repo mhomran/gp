@@ -7,19 +7,21 @@ import pickle
 import cv2 as cv
 import copy
 
-IMG = ImageClass('../../output.avi')
+IMG = ImageClass('../data/videos/Video.avi')
 
 # ret, frame, frameId = IMG.readFrame()
 # MF = ModelField(frame)
 # particles = MF._get_particles()
 
+# with open('file.pkl', 'wb') as f:
+#     pickle.dump(particles, f)
+# f.close()
 particles_ORG = {}
 with open('file.pkl', 'rb') as f:
     particles_ORG = pickle.load(f)
 
 particles = copy.deepcopy(particles_ORG)
 PD = PlayerDetction(particles, IMG)
-
 
 while True:
 
@@ -37,8 +39,8 @@ while True:
         PD.loopOnBB()
 
     wait = 1
-    if(frameId > 300):
-        wait = 1
+    # if(frameId > 300):
+    #     wait = 0
     keyboard = cv.waitKey(1)
     if keyboard == 'q' or keyboard == 27:
         break
