@@ -1,3 +1,5 @@
+from PlayerDetection.ImageClass import ImageClass
+from PlayerDetection.PlayerDetection import PlayerDetction
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
@@ -51,9 +53,13 @@ class PlayerTracker:
     lmrframe, lmrframe_gpu = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
     
     # Model Field
-    ModelField(lmrframe)
-
+    MF = ModelField(lmrframe)
+    particles = MF._get_particles()
+    self.IMG = ImageClass()
+    
     # Background
+    self.frameId = 0
+    self.PD = PlayerDetction(particles, self.IMG)
 
     # performance
     self.frame_count = 0
@@ -148,11 +154,25 @@ class PlayerTracker:
       mrframe, mrframe_gpu = self.mr_stitcher.stitch(self.mframe_gpu, self.rframe_gpu)
       lmrframe, lmrframe_gpu  = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
 
+      # 5- Player Detection
+      fgMask = self.PD.subBG(lmrframe)
+      if(self.frameId > 300):
+        self.PD.preProcessing(fgMask)
+        self.PD.loopOnBB()
+
+      self.IMG.writeTxt(lmrframe, self.frameId)
+      self.IMG.showImage(lmrframe, "Frame")
+      keyboard = cv.waitKey(1)
+      if keyboard == 'q' or keyboard == 27:
+          break
       # 5- Calculate performance for the whole pipeline
       self._calculate_performance()
 
       # 6- Save
-      self.out.write(lmrframe)
+      # self.out.write(lmrframe)
+      
+      self.frameId += 1
+
 
 
   
