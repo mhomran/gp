@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 from enum import Enum
 import imutils
+import pickle
 
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)
@@ -221,3 +222,8 @@ class ModelField:
 
     def _get_particles(self):
         return self.s
+
+    def _save_particles(self):
+      with open('file.pkl', 'wb') as f:
+        pickle.dump(self.s, f)
+        f.close()

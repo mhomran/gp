@@ -2,6 +2,9 @@ import cv2 as cv
 import numpy as np
 import csv
 from imutils.object_detection import non_max_suppression
+
+import time
+
 BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
@@ -20,21 +23,13 @@ class BoundingBox:
         self.br = br
 
 
-class PlayerDetectionModel:
-    def __init__(self):
-        self.header = ['v1', 'v2', 'v3', 'hl', 'hr']
-        self.data = None
+class PlayerDetection:
+    LOW_TH = 30
+    HIGH_TH = 200
+    LEARNING_RATE = -1
 
-    def saveModel(self):
-        with open('kmeans.csv', 'w', encoding='UTF8', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(self.header)
-            writer.writerows(self.data)
-
-
-class PlayerDetction:
     def __init__(self, particles, IMG):
-        self.backSub = cv.createBackgroundSubtractorMOG2(
+        self.backSub = cv.cuda.createBackgroundSubtractorMOG2(
             BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
 
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
@@ -51,15 +46,17 @@ class PlayerDetction:
         self.contourFrame = None
         self.outputPD = None
 
-    def subBG(self, frame):
-        self.frame = frame
+        self.morph_filter = cv.cuda.createMorphologyFilter(cv.MORPH_OPEN, cv.CV_8UC1, self.kernel)
+        self.canny_filter = cv.cuda.createCannyEdgeDetector(PlayerDetection.LOW_TH, PlayerDetection.HIGH_TH)
+
+        self.frame_gpu = cv.cuda_GpuMat()
+
+    def subBG(self, frame_gpu):
+        self.frame = frame_gpu.download()
         # will be removed
         self.setFramesForDisplay()
-        frame = self.backSub.apply(frame)
-        # self.IMG.showImage(frame, "FGMASK")
-        # shadow
-        # _, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
-        return frame
+        fgMask_gpu = self.backSub.apply(frame_gpu, PlayerDetection.LEARNING_RATE, None)
+        return fgMask_gpu.download()
 
     def setFramesForDisplay(self):
         self.MFfrmae = self.frame.copy()
@@ -67,7 +64,10 @@ class PlayerDetction:
         self.contourFrame = self.frame.copy()
 
     def preProcessing(self, fgMask):
+        # start_time = time.time()
         self.opening(fgMask)
+        # end_time = time.time()
+        # print("--- %s seconds ---" % (end_time - start_time))
         self.setContours()
         self.setBoundingBoxes()
 
@@ -76,13 +76,17 @@ class PlayerDetction:
         self.fgMask = fgMask
 
     def opening(self, frame):
-        self.openingImg = cv.morphologyEx(frame, cv.MORPH_OPEN, self.kernel)
+        self.frame_gpu.upload(frame)
+        self.openingImg = self.morph_filter.apply(self.frame_gpu).download()
+        # self.openingImg = cv.morphologyEx(frame, cv.MORPH_OPEN, self.kernel)
 
     def setContours(self):
-        edged = cv.Canny(self.openingImg, 30, 200)
-        contours, _ = cv.findContours(edged,
+        self.frame_gpu.upload(self.openingImg)
+        edged = self.canny_filter.detect(self.frame_gpu).download()
+
+        # edged = cv.Canny(self.openingImg, 30, 200)
+        self.contours, _ = cv.findContours(edged,
                                       cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        self.contours = contours
 
     def setBoundingBoxes(self):
         BB = []
@@ -142,32 +146,6 @@ class PlayerDetction:
 
         return True, round((p1+p2+p3)/3, 2)
 
-    def IOU(self, B1, B2):
-        dx = min(B1.br[0], B2.br[0]) - max(B1.tl[0], B2.tl[0])
-        dy = min(B1.br[1], B2.br[1]) - max(B1.tl[1], B2.tl[1])
-
-        area1 = (B1.br[0]-B1.tl[0])*(B1.br[1]-B1.tl[1])
-        area2 = (B2.br[0]-B2.tl[0])*(B2.br[1]-B2.tl[1])
-
-        intersection = dx*dy
-        union = area1+area2-intersection
-
-        assert union != 0
-        return round((intersection/union), 2)
-
-    def applyNonMax(self, particles):
-        i = 0
-        while(i < len(particles)):
-            j = i+1
-            while(j < len(particles)):
-                iou = self.IOU(particles[i].B, particles[j].B)
-                if(iou > IOU_TH):
-                    particles.pop(j)
-                    j = j-1
-                j = j+1
-            i = i+1
-        return particles
-
     def getParticlesInBB(self, B):
         MFBB = {}
         Sx = B.tl[0]
@@ -217,8 +195,8 @@ class PlayerDetction:
             # get candidate particle
             NonMax = []
             for particle in list(MFBB):
-                self.getCandidateParticle(MFBB, particle,  NonMax)
-            candid = candid+NonMax
+                self.getCandidateParticle(MFBB, particle, NonMax)
+            candid = candid + NonMax
 
         self.IMG.showImage(self.frame, "BB")
 
@@ -230,11 +208,8 @@ class PlayerDetction:
             cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
         
         self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        #cv.waitKey(0)
 
         self.outputPD = non_max
-        #self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        #self.IMG.showImage(self.fgMask, "fgMask After non max")
 
     def getOutputPD(self):
         return self.outputPD

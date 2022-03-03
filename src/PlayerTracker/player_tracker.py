@@ -1,5 +1,5 @@
 from PlayerDetection.ImageClass import ImageClass
-from PlayerDetection.PlayerDetection import PlayerDetction
+from PlayerDetection.PlayerDetection import PlayerDetection
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
@@ -59,7 +59,7 @@ class PlayerTracker:
     
     # Background
     self.frameId = 0
-    self.PD = PlayerDetction(particles, self.IMG)
+    self.PD = PlayerDetection(particles, self.IMG)
 
     # performance
     self.frame_count = 0
@@ -155,7 +155,7 @@ class PlayerTracker:
       lmrframe, lmrframe_gpu  = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
 
       # 5- Player Detection
-      fgMask = self.PD.subBG(lmrframe)
+      fgMask = self.PD.subBG(lmrframe_gpu)
       if(self.frameId > 300):
         self.PD.preProcessing(fgMask)
         self.PD.loopOnBB()
