@@ -64,29 +64,16 @@ class PlayerDetection:
         self.contourFrame = self.frame.copy()
 
     def preProcessing(self, fgMask):
-        # start_time = time.time()
-        self.opening(fgMask)
-        # end_time = time.time()
-        # print("--- %s seconds ---" % (end_time - start_time))
-        self.setContours()
-        self.setBoundingBoxes()
-
-        # self.IMG.showImage(self.contourFrame, "contours")
-
         self.fgMask = fgMask
 
-    def opening(self, frame):
-        self.frame_gpu.upload(frame)
-        self.openingImg = self.morph_filter.apply(self.frame_gpu).download()
-        # self.openingImg = cv.morphologyEx(frame, cv.MORPH_OPEN, self.kernel)
+        self.frame_gpu.upload(fgMask)
 
-    def setContours(self):
-        self.frame_gpu.upload(self.openingImg)
-        edged = self.canny_filter.detect(self.frame_gpu).download()
-
-        # edged = cv.Canny(self.openingImg, 30, 200)
+        self.openingImg = self.morph_filter.apply(self.frame_gpu)
+        edged = self.canny_filter.detect(self.openingImg).download()
         self.contours, _ = cv.findContours(edged,
                                       cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        self.setBoundingBoxes()
+
 
     def setBoundingBoxes(self):
         BB = []

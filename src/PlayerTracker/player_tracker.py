@@ -4,7 +4,7 @@ from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
 import cv2 as cv
-import imutils
+import imutils, time
 
 class PlayerTracker:
   # undistortion parameter
@@ -165,10 +165,11 @@ class PlayerTracker:
       keyboard = cv.waitKey(1)
       if keyboard == 'q' or keyboard == 27:
           break
-      # 5- Calculate performance for the whole pipeline
+
+      # 6- Calculate performance for the whole pipeline
       self._calculate_performance()
 
-      # 6- Save
+      # 7- Save
       # self.out.write(lmrframe)
       
       self.frameId += 1

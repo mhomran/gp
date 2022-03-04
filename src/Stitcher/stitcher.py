@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+import time
 
 class Stitcher:
   # Set minimum match condition
@@ -10,12 +11,18 @@ class Stitcher:
     self.h = None # Homography Matrix
     self.out_shape = None # stitched image size
     self.trans_dist = None # translation distance
-
+    self.mapx = self.mapy = None
+  
     self.lframe_shape = lframe.shape
     self.rframe_shape = rframe.shape
 
     self._construct_homography(lframe, rframe)
     self._calculate_output_size()
+    self._calculate_maps()
+
+  def _calculate_maps(self):
+    trans_m = np.array([[1, 0, self.trans_dist[0]], [0, 1, self.trans_dist[1]], [0, 0, 1]])
+    self.mapx, self.mapy = cv.cuda.buildWarpPerspectiveMaps(trans_m.dot(self.h), False, self.out_shape)
 
   def _calculate_output_size(self):
     l_height, l_width = self.lframe_shape[:2]
@@ -40,21 +47,21 @@ class Stitcher:
     l_height, l_width = self.lframe_shape[:2]
     r_height, r_width = self.rframe_shape[:2]
 
-    trans_m = np.array([[1, 0, self.trans_dist[0]], [0, 1, self.trans_dist[1]], [0, 0, 1]])
     if self.ref == 'l':
-      output_img_gpu = cv.cuda.warpPerspective(rframe_gpu, trans_m.dot(self.h), self.out_shape)
+      output_img_gpu = cv.cuda.remap(rframe_gpu, self.mapx, self.mapy, cv.INTER_LINEAR)
       output_img = output_img_gpu.download()
       lframe = lframe_gpu.download()
       ref_frame = output_img[self.trans_dist[1]:l_height+self.trans_dist[1], self.trans_dist[0]:l_width+self.trans_dist[0]] 
       ref_frame[lframe > 0] = lframe[lframe > 0]
-      output_img_gpu.upload(output_img)
     else:
-      output_img_gpu = cv.cuda.warpPerspective(lframe_gpu, trans_m.dot(self.h), self.out_shape)
+      output_img_gpu = cv.cuda.remap(lframe_gpu, self.mapx, self.mapy, cv.INTER_LINEAR)
       output_img = output_img_gpu.download()
       rframe = rframe_gpu.download()
       ref_frame = output_img[self.trans_dist[1]:r_height+self.trans_dist[1], self.trans_dist[0]:r_width+self.trans_dist[0]]
       ref_frame[rframe > 0] = rframe[rframe > 0]
-      output_img_gpu.upload(output_img)
+
+    output_img_gpu.upload(output_img)
+
       
     return output_img, output_img_gpu
 
