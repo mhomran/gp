@@ -9,9 +9,10 @@ img = None
 if __name__=="__main__":
 
   # reading the image
-  img = cv.imread('../../data/imgs/stitched/sample1.png')
-
-  ModelField(img)
+  cap = cv.VideoCapture("../../data/videos/cuda_output.avi")
+  ret, frame = cap.read()
+  
+  ModelField(frame)
 
   cv.destroyAllWindows()
 

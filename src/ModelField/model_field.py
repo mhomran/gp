@@ -3,6 +3,7 @@ import numpy as np
 from enum import Enum
 import imutils
 import pickle
+from scipy.optimize import fsolve
 
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)
@@ -13,7 +14,7 @@ SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3  # thickness of drawings
-SAMPLES_PER_METER = 3
+SAMPLES_PER_METER = .5
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
 GUI_WIDTH = 1200
@@ -51,13 +52,13 @@ class ModelField:
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
 
         # modelfield image (Top view)
-        self.grid = cv.imread("/media/mhomran/Material/Workspaces/GitHub/gp/data/imgs/pitch/h.png")
+        self.grid = cv.imread("../../data/imgs/pitch/h.png")
         self.grid_res_w = self.grid.shape[1]
         self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
-        self.sample_inc_w = self.px_per_m_w // SAMPLES_PER_METER
+        self.sample_inc_w = int(self.px_per_m_w // SAMPLES_PER_METER)
         self.grid_res_h = self.grid.shape[0]
         self.px_per_m_h = self.grid_res_h // SOCCER_HEIGHT_M
-        self.sample_inc_h = self.px_per_m_h // SAMPLES_PER_METER
+        self.sample_inc_h = int(self.px_per_m_h // SAMPLES_PER_METER)
 
         self.clicks = []
         self.s = None  # particles
@@ -96,49 +97,75 @@ class ModelField:
             self.clicks.append(self._gui2orig((x, y)))
 
             if self.gui_state == GuiState.STATE_CORNERS:
-                if len(self.clicks) <= 4:
+                if len(self.clicks) < 6:
                     curr_click = self.clicks[-1]
                     self.original_img = cv.circle(
                         self.original_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
                     if len(self.clicks) == 1:
-                        self._write_hint("choose the upper right corner")
+                        self._write_hint("choose the upper center corner")
                     elif len(self.clicks) == 2:
-                        self._write_hint("choose the bottom right corner")
+                        self._write_hint("choose the upper right corner")
                     elif len(self.clicks) == 3:
+                        self._write_hint("choose the bottom right corner")
+                    elif len(self.clicks) == 4:
+                        self._write_hint("choose the bottom center corner")
+                    elif len(self.clicks) == 5:
                         self._write_hint("choose the bottom left corner")
 
-                if len(self.clicks) == 4:
-                    pts1 = np.float32(self.clicks)
-                    pts2 = np.float32([[0, 0], [self.grid_res_w, 0],
-                                       [self.grid_res_w, self.grid_res_h], [0, self.grid_res_h]])
-                    self.H = cv.getPerspectiveTransform(pts2, pts1)
+                elif len(self.clicks) == 6:
+                    half_w = self.grid_res_w // 2
+                    pts1 = np.float32(self.clicks[:2] + self.clicks[4:])
+                    pts2 = np.float32([[0, 0], [half_w, 0],
+                                        [half_w, self.grid_res_h], 
+                                        [0, self.grid_res_h]])
+                    self.lH = cv.getPerspectiveTransform(pts2, pts1)
+                    
+                    A, B, C, D = pts1
+                    self.lL_horizon = self._calculate_horizon(A, B, C, D)
+                    
+                    pts1 = np.float32(self.clicks[1:3] + self.clicks[3:5])
+                    pts2 = np.float32([[half_w, 0], [self.grid_res_w, 0],
+                                        [self.grid_res_w, self.grid_res_h], 
+                                        [half_w, self.grid_res_h]])
+                    self.rH = cv.getPerspectiveTransform(pts2, pts1)
 
-                    A, B = (self.clicks[0], self.clicks[3])
-                    C, D = (self.clicks[1], self.clicks[2])
-                    self.L_horizon = self._calculate_horizon(A, B, C, D)
-
-                    self._write_hint("choose the bottom of the post")
+                    A, B, C, D = pts1
+                    self.rL_horizon = self._calculate_horizon(A, B, C, D)
+                    
+                    self._write_hint("choose the bottom of the left post")
 
                     self.clicks = []
                     self.gui_state = GuiState.STATE_GOAL
 
             elif self.gui_state == GuiState.STATE_GOAL:
-                if len(self.clicks) == 1:
-                    self._write_hint("choose the top of the post")
+                if len(self.clicks) < 4:
+                    if len(self.clicks) == 1:
+                        self._write_hint("choose the top of the left post")
+                    if len(self.clicks) == 2:
+                        self._write_hint("choose the bottom of the right post")
+                    if len(self.clicks) == 3:
+                        self._write_hint("choose the top of the right post")
 
-                elif len(self.clicks) == 2:
-                    u_bottom = self.clicks[0]
-                    u_top = self.clicks[1]
+                elif len(self.clicks) == 4:
+                    u_bottom, u_top = self.clicks[0:2]
                     cv.line(self.original_img, u_bottom,
                             u_top, RED_COLOR, THICKNESS)
 
                     # equation (3.3)
                     dst_u_bt = self._euclidean_distance(u_bottom, u_top)
-                    dst_u_L = self._min_dist_line_point(
-                        self.L_horizon, u_bottom)
-                    self.hcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
+                    dst_u_L = self._min_dist_line_point(self.lL_horizon, u_bottom)
+                    self.lhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
+                    
+                    u_bottom, u_top = self.clicks[2:]
+                    cv.line(self.original_img, u_bottom,
+                            u_top, RED_COLOR, THICKNESS)
 
-                    self.s = self._construct_modelfield_img(self.H)
+                    # equation (3.3)
+                    dst_u_bt = self._euclidean_distance(u_bottom, u_top)
+                    dst_u_L = self._min_dist_line_point(self.rL_horizon, u_bottom)
+                    self.rhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
+
+                    self.s = self._construct_modelfield_img()
 
                     cv.imwrite("modelfield.png", self.grid)
                     cv.imwrite("result.png", self.original_img)
@@ -152,21 +179,19 @@ class ModelField:
         #   p: the point
         m = L[0]
         c = L[1]
-        if m == 0:
-            return np.abs(c - p[1])
-        else:
-            # TODO: implement
-            perp_m = -(1/m)
+        x0 = p[0]
+        y0 = p[1]
+        d = np.abs((m*x0-y0+c))/np.sqrt(m**2 + 1)
+        return d
 
     def _euclidean_distance(self, p1, p2):
         dst = np.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2))
         return dst
 
-    def _calculate_horizon(self, A, B, C, D):
+    def _get_intersect(self, A, B, C, D):
         # Description: get the intersection between the two lines
         # the first line passes through A, B. Its slope a, constant b.
         # the second line passes through C, D. Its slope c, constant d.
-        # then draw a horizontal line.
 
         # y = ax + b
         a = (A[1] - B[1])/(A[0] - B[0])
@@ -176,30 +201,64 @@ class ModelField:
         c = (C[1] - D[1])/(C[0] - D[0])
         d = C[1] - c * C[0]
 
-        # TODO: check if there's an intersection
+        # same slope (no intersection) ?
+        if a == c: return False, None
+
         # intersection (solve for x)
-        x = int((d - b) / (a - c))
-        y = int(a * x + b)
+        x = (d - b) / (a - c)
+        y = (a * x + b)
 
-        cv.line(self.original_img, (0, y),
-                (self.original_img.shape[1], y), RED_COLOR, THICKNESS)
+        return True, (x, y)
 
-        return 0, y
+    def _calculate_horizon(self, A, B, C, D):
+        # Description: given the top left A, top right B,
+        # bottom right C, bottom left D, we need to calculate 
+        # the horizon of the perspective.
+        # Input:
+        #   A: top left
+        #   B: top right
+        #   C: bottom right
+        #   D: bottom left
+        ret, p1 = self._get_intersect(A, B, D, C)
+        if not ret: return False
+        x1, y1 = p1
 
-    def _construct_modelfield_img(self, H):
+        ret, p2 = self._get_intersect(A, D, B, C)
+        if not ret: return False
+        x2, y2 = p2
+
+        cv.line(self.original_img, (int(p1[0]), int(p1[1])),
+                (int(p2[0]), int(p2[1])), RED_COLOR, THICKNESS)
+        
+        m = (y2 - y1) / (x2 - x1)
+        c = y1 - m * x1
+        
+        return m, c
+    
+    def _construct_modelfield_img(self):
         s_total = {}
 
         for row in range(self.sample_inc_h, self.grid_res_h, self.sample_inc_h):
             for col in range(self.sample_inc_w, self.grid_res_w, self.sample_inc_w):
                 q = (col, row)
 
+                if col < (self.grid_res_w / 2):
+                    horizon = self.lL_horizon
+                    hcam = self.lhcam
+                    H = self.lH
+                else:
+                    horizon = self.rL_horizon
+                    hcam = self.rhcam
+                    H = self.rH
+
                 q_img = cv.perspectiveTransform(np.array([[q]], np.float32), H)
                 q_img = tuple(q_img.squeeze())
                 q_img = (int(q_img[0]), int(q_img[1]))
 
                 # equation (3.3)
-                BB_height = (self._min_dist_line_point(
-                    self.L_horizon, q_img) * T_PLAYER_CM) / self.hcam
+                d = self._min_dist_line_point(horizon, q_img)
+                BB_height = (d * T_PLAYER_CM) / hcam
+
                 BB_width = BB_height * PLAYER_ASPECT_RATIO
                 tl = (int(q_img[0] - BB_width // 2), int(q_img[1] - BB_height))
                 br = (int(q_img[0] + BB_width // 2), int(q_img[1]))
@@ -207,13 +266,13 @@ class ModelField:
                 B = BoundingBox(tl, br)
                 a = self.original_img_without_BBs[tl[1]:int(
                     tl[1]+BB_height), tl[0]:int(tl[0]+BB_width)]
-                # save the bounding boxes. Warning: computational intensive
-                # cv.imwrite(f"BBs/BB_{row}_{col}.png", a)
+
                 s = Particle(q, q_img, B, a)
 
                 s_total[q_img] = s
 
                 B.draw(self.original_img)
+                cv.imwrite(f"BBs/{row}_{col}.png", a)
                 self.grid = cv.circle(self.grid, q, 2, BLUE_COLOR, cv.FILLED)
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
