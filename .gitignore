@@ -2,3 +2,8 @@ papers/*.pdf
 data/imgs/*
 data/videos/*
 */**/__pycache__
+*.csv
+*.png
+*.jpg
+*.avi
+*.mp4

@@ -51,6 +51,9 @@ class PlayerDetection:
 
         self.frame_gpu = cv.cuda_GpuMat()
 
+        self.output_q = []
+        self.output_q_img = []
+
     def subBG(self, frame_gpu):
         self.frame = frame_gpu.download()
         # will be removed
@@ -191,12 +194,24 @@ class PlayerDetection:
                          particle.B.br[0], particle.B.br[1]] for particle in candid])
 
         non_max = non_max_suppression(rects, probs=None, overlapThresh=IOU_TH)
+        
+        self.output_q_img = []
+        self.output_q = []
+        
         for (x1, y1, x2, y2) in non_max:
             cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
-        
+
+            w = x2 - x1
+            x = x1 + w // 2
+            y = y2
+            
+            q = self.particles[(x, y)].q
+            q_img = (x, y)
+            self.output_q.append(q)
+            self.output_q_img.append(q_img)
+
         self.IMG.showImage(self.MFfrmae, "MFBB After non max")
 
-        self.outputPD = non_max
 
     def getOutputPD(self):
-        return self.outputPD
+        return self.output_q, self.output_q_img

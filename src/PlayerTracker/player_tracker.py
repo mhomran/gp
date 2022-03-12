@@ -1,5 +1,8 @@
+import os
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
+from PlayerDetection.TagReader import TagReader
+from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
@@ -165,13 +168,30 @@ class PlayerTracker:
       keyboard = cv.waitKey(1)
       if keyboard == 'q' or keyboard == 27:
           break
+      
 
       # 6- Calculate performance for the whole pipeline
       self._calculate_performance()
 
       # 7- Save
-      # self.out.write(lmrframe)
-      
+      if(self.frameId > 300):
+        isExist = os.path.exists("q")
+        if not isExist:
+          os.makedirs("q")
+        isExist = os.path.exists("q_img")
+        if not isExist:
+          os.makedirs("q_img")
+          
+        # save frame
+        self.out.write(lmrframe)
+        # save tags
+        q, q_img = self.PD.getOutputPD()
+        TagWriter.write(f"q/{self.frameId}.csv", q)
+        TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
+
+        if self.frameId > 300 + 1200:
+          break
+
       self.frameId += 1
 
 

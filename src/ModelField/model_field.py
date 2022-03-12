@@ -14,7 +14,7 @@ SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3  # thickness of drawings
-SAMPLES_PER_METER = .5
+SAMPLES_PER_METER = 2
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
 GUI_WIDTH = 1200
@@ -52,7 +52,7 @@ class ModelField:
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
 
         # modelfield image (Top view)
-        self.grid = cv.imread("../../data/imgs/pitch/h.png")
+        self.grid = cv.imread("/media/mhomran/Material/Workspaces/GitHub/gp/data/imgs/pitch/h.png")
         self.grid_res_w = self.grid.shape[1]
         self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
         self.sample_inc_w = int(self.px_per_m_w // SAMPLES_PER_METER)
