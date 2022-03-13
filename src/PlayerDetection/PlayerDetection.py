@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import csv
 from imutils.object_detection import non_max_suppression
+import timeit
 BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
@@ -57,7 +58,7 @@ class PlayerDetction:
         # will be removed
         self.setFramesForDisplay()
         frame = self.backSub.apply(frame)
-        # self.IMG.showImage(frame, "FGMASK")
+        #self.IMG.showImage(frame, "FGMASK")
         # shadow
         # _, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
         return frame
@@ -130,10 +131,9 @@ class PlayerDetction:
         return roiL, roiR
 
     def getRatio(self, img):
+        h, w = img.shape
         number_of_white_pix = np.sum(img == 255)
-        number_of_black_pix = np.sum(img == 0)
-        percentage = round(number_of_white_pix /
-                           (number_of_white_pix+number_of_black_pix), 2)
+        percentage = number_of_white_pix / (h*w)
 
         return percentage
 
@@ -216,12 +216,12 @@ class PlayerDetction:
                          B.br, (0, 255, 0), 1)
 
             # get candidate particle
-            NonMax = []
+            newCandidate = []
             for particle in list(MFBB):
-                self.getCandidateParticle(MFBB, particle,  NonMax)
-            candid = candid+NonMax
+                self.getCandidateParticle(MFBB, particle,  newCandidate)
+            candid = candid+newCandidate
 
-        self.IMG.showImage(self.frame, "BB")
+        #self.IMG.showImage(self.frame, "BB")
 
         rects = np.array([[particle.B.tl[0], particle.B.tl[1],
                          particle.B.br[0], particle.B.br[1]] for particle in candid])
@@ -229,9 +229,9 @@ class PlayerDetction:
         non_max = non_max_suppression(rects, probs=None, overlapThresh=IOU_TH)
         for (x1, y1, x2, y2) in non_max:
             cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
-        
+
         self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        #cv.waitKey(0)
+        # cv.waitKey(0)
 
         self.outputPD = non_max
         #self.IMG.showImage(self.MFfrmae, "MFBB After non max")

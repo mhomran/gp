@@ -1,4 +1,3 @@
-from matplotlib.pyplot import draw
 from PlayerDetection.PlayerDetection import PlayerDetction
 from PlayerDetection.ImageClass import ImageClass
 from ModelField.model_field import ModelField
@@ -6,16 +5,17 @@ import numpy as np
 import pickle
 import cv2 as cv
 import copy
-
+import timeit
 IMG = ImageClass('../data/videos/Video.avi')
 
 # ret, frame, frameId = IMG.readFrame()
 # MF = ModelField(frame)
 # particles = MF._get_particles()
 
-# with open('file.pkl', 'wb') as f:
+# with open('file2.pkl', 'wb') as f:
 #     pickle.dump(particles, f)
 # f.close()
+
 particles_ORG = {}
 with open('file.pkl', 'rb') as f:
     particles_ORG = pickle.load(f)
@@ -39,9 +39,9 @@ while True:
         PD.loopOnBB()
 
     wait = 1
-    # if(frameId > 300):
-    #     wait = 0
-    keyboard = cv.waitKey(1)
+    if(frameId > 300):
+        wait = 0
+    keyboard = cv.waitKey(wait)
     if keyboard == 'q' or keyboard == 27:
         break
 
@@ -50,7 +50,3 @@ while True:
 # with open('file.pkl', 'wb') as f:
 #     pickle.dump(particles, f)
 # f.close()
-
-
-
-
