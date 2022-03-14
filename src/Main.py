@@ -12,16 +12,17 @@ IMG = ImageClass('../data/videos/Video.avi')
 # MF = ModelField(frame)
 # particles = MF._get_particles()
 
-# with open('file2.pkl', 'wb') as f:
+# with open('file3.pkl', 'wb') as f:
 #     pickle.dump(particles, f)
 # f.close()
 
 particles_ORG = {}
-with open('file.pkl', 'rb') as f:
+with open('file3.pkl', 'rb') as f:
     particles_ORG = pickle.load(f)
 
 particles = copy.deepcopy(particles_ORG)
 PD = PlayerDetction(particles, IMG)
+
 
 while True:
 
@@ -38,15 +39,11 @@ while True:
         PD.preProcessing(fgMask)
         PD.loopOnBB()
 
-    wait = 1
-    if(frameId > 300):
-        wait = 0
-    keyboard = cv.waitKey(wait)
+ 
+    
+    keyboard = cv.waitKey(1)
     if keyboard == 'q' or keyboard == 27:
         break
 
 
-# save model
-# with open('file.pkl', 'wb') as f:
-#     pickle.dump(particles, f)
-# f.close()
+

@@ -219,23 +219,27 @@ class PlayerDetction:
             newCandidate = []
             for particle in list(MFBB):
                 self.getCandidateParticle(MFBB, particle,  newCandidate)
+
             candid = candid+newCandidate
 
-        #self.IMG.showImage(self.frame, "BB")
+        ratioVal = []
+        for particle in candid:
+            ratioVal.append(particle.ratio)
 
         rects = np.array([[particle.B.tl[0], particle.B.tl[1],
                          particle.B.br[0], particle.B.br[1]] for particle in candid])
 
-        non_max = non_max_suppression(rects, probs=None, overlapThresh=IOU_TH)
+        non_max = non_max_suppression(
+            rects, probs=ratioVal, overlapThresh=IOU_TH)
+
         for (x1, y1, x2, y2) in non_max:
             cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
 
         self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        # cv.waitKey(0)
+        cv.waitKey(0)
 
         self.outputPD = non_max
-        #self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        #self.IMG.showImage(self.fgMask, "fgMask After non max")
+       
 
     def getOutputPD(self):
         return self.outputPD

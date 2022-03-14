@@ -9,7 +9,7 @@ img = None
 if __name__=="__main__":
 
   # reading the image
-  img = cv.imread('../../data/imgs/stitched/sample1.png')
+  img = cv.imread('../../data/videos/Video.avi')
 
   ModelField(img)
 
