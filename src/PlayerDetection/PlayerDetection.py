@@ -12,7 +12,8 @@ KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
 
 VERTICAL_TH = .15
-HORIZONTAL_TH = .2
+HEAD_VERTICAL_TH = .05
+HORIZONTAL_TH = .15
 IOU_TH = .2
 
 
@@ -58,7 +59,7 @@ class PlayerDetction:
         # will be removed
         self.setFramesForDisplay()
         frame = self.backSub.apply(frame)
-        #self.IMG.showImage(frame, "FGMASK")
+
         # shadow
         # _, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
         return frame
@@ -72,9 +73,6 @@ class PlayerDetction:
         self.opening(fgMask)
         self.setContours()
         self.setBoundingBoxes()
-
-        self.IMG.showImage(self.contourFrame, "contours")
-
         self.fgMask = fgMask
 
     def opening(self, frame):
@@ -138,7 +136,7 @@ class PlayerDetction:
         return percentage
 
     def getDecision(self, p1, p2, p3):
-        if(p1 < VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
+        if(p1 < HEAD_VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
             return False, 0
 
         return True, round((p1+p2+p3)/3, 2)
@@ -168,6 +166,20 @@ class PlayerDetction:
                 j = j+1
             i = i+1
         return particles
+
+    def nonMax(self, candid):
+        ratioVal = [particle.ratio for particle in candid]
+
+        rects = np.array([[particle.B.tl[0], particle.B.tl[1],
+                         particle.B.br[0], particle.B.br[1]] for particle in candid])
+
+        non_max = non_max_suppression(
+            rects, probs=ratioVal, overlapThresh=IOU_TH)
+
+        for (x1, y1, x2, y2) in non_max:
+            cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
+
+        return non_max
 
     def getParticlesInBB(self, B):
         MFBB = {}
@@ -209,37 +221,23 @@ class PlayerDetction:
 
     def loopOnBB(self):
         candid = []
-        for _, B in enumerate(self.BB):
-            MFBB = self.getParticlesInBB(B)
-            # draw BB
-            cv.rectangle(self.frame, B.tl,
-                         B.br, (0, 255, 0), 1)
 
-            # get candidate particle
+        for _, B in enumerate(self.BB):
             newCandidate = []
+            MFBB = self.getParticlesInBB(B)
             for particle in list(MFBB):
                 self.getCandidateParticle(MFBB, particle,  newCandidate)
-
             candid = candid+newCandidate
 
-        ratioVal = []
-        for particle in candid:
-            ratioVal.append(particle.ratio)
-
-        rects = np.array([[particle.B.tl[0], particle.B.tl[1],
-                         particle.B.br[0], particle.B.br[1]] for particle in candid])
-
-        non_max = non_max_suppression(
-            rects, probs=ratioVal, overlapThresh=IOU_TH)
-
-        for (x1, y1, x2, y2) in non_max:
-            cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
-
-        self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        cv.waitKey(0)
-
-        self.outputPD = non_max
-       
+        self.outputPD = self.nonMax(candid)
+        self.displayIMGs()
 
     def getOutputPD(self):
         return self.outputPD
+
+    def displayIMGs(self):
+        self.IMG.showImage(self.MFfrmae, "MFBB After non max")
+        #self.IMG.showImage(self.MFBefore, "MFBB before non max")
+        #self.IMG.showImage(self.contourFrame, "contours")
+        #self.IMG.showImage(self.fgMask, "FGMASK")
+        return
