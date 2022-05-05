@@ -10,10 +10,11 @@ BACK_SUB_DETECT_SHADOW = False
 
 KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
+BB_MARGIN = 5
 
 VERTICAL_TH = .15
-HEAD_VERTICAL_TH = .05
-HORIZONTAL_TH = .15
+HEAD_VERTICAL_TH = .1
+HORIZONTAL_TH = .2
 IOU_TH = .2
 
 
@@ -49,7 +50,7 @@ class PlayerDetction:
 
         self.IMG = IMG
         self.frame = None
-        self.MFfrmae = None
+        self.MFAfter = None
         self.MFBefore = None
         self.contourFrame = None
         self.outputPD = None
@@ -65,7 +66,7 @@ class PlayerDetction:
         return frame
 
     def setFramesForDisplay(self):
-        self.MFfrmae = self.frame.copy()
+        self.MFAfter = self.frame.copy()
         self.MFBefore = self.frame.copy()
         self.contourFrame = self.frame.copy()
 
@@ -92,8 +93,8 @@ class PlayerDetction:
             if(w*h < MIN_WIDTH_BB or w > h):
                 continue
 
-            tl = (x, y)
-            br = (x+w, y+h)
+            tl = (x-BB_MARGIN, y-BB_MARGIN)
+            br = (x+w+BB_MARGIN, y+h+BB_MARGIN)
             B = BoundingBox(tl, br)
             BB.append(B)
 
@@ -136,7 +137,7 @@ class PlayerDetction:
         return percentage
 
     def getDecision(self, p1, p2, p3):
-        if(p1 < HEAD_VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
+        if(p1 < VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
             return False, 0
 
         return True, round((p1+p2+p3)/3, 2)
@@ -176,8 +177,12 @@ class PlayerDetction:
         non_max = non_max_suppression(
             rects, probs=ratioVal, overlapThresh=IOU_TH)
 
+        for particle in candid:
+            cv.rectangle(self.MFBefore, particle.B.tl,
+                         particle.B.br, (0, 255, 0), 1)
+
         for (x1, y1, x2, y2) in non_max:
-            cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
+            cv.rectangle(self.MFAfter, (x1, y1), (x2, y2), (255, 0, 0), 1)
 
         return non_max
 
@@ -198,16 +203,13 @@ class PlayerDetction:
         return MFBB
 
     def getCandidateParticle(self, MFBB, particle,  NonMax):
-        roi1, roi2, roi3 = self.vertRoi(MFBB[particle].B)
-        pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
-        pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
-        pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
-        decisionV, ratio = self.getDecision(pRo1, pRo2, pRo3)
 
-        decisionH, pL, pR = self.hoizontalCheck(MFBB[particle])
+        decisionV, ratio = self.verticalCheck(MFBB[particle])
+        decisionH = self.hoizontalCheck(MFBB[particle])
 
         if(decisionV and decisionH):
             MFBB[particle].ratio = ratio
+            self.particles[particle].ratio = ratio
             NonMax.append(MFBB[particle])
 
     def hoizontalCheck(self, particle):
@@ -217,7 +219,16 @@ class PlayerDetction:
         pR = self.getRatio(
             self.fgMask[roiR[0]:roiR[1], roiR[2]:roiR[3]])
 
-        return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH), pL, pR
+        return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH)
+
+    def verticalCheck(self, particle):
+        roi1, roi2, roi3 = self.vertRoi(particle.B)
+        pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
+        pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
+        pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
+        decisionV, ratio = self.getDecision(pRo1, pRo2, pRo3)
+
+        return decisionV, ratio
 
     def loopOnBB(self):
         candid = []
@@ -236,8 +247,8 @@ class PlayerDetction:
         return self.outputPD
 
     def displayIMGs(self):
-        self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-        #self.IMG.showImage(self.MFBefore, "MFBB before non max")
         #self.IMG.showImage(self.contourFrame, "contours")
-        #self.IMG.showImage(self.fgMask, "FGMASK")
+        self.IMG.showImage(self.MFAfter, "MFBB After non max")
+        self.IMG.showImage(self.MFBefore, "MFBB before non max")
+        self.IMG.showImage(self.fgMask, "FGMASK")
         return

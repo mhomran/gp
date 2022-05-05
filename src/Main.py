@@ -38,6 +38,8 @@ while True:
     if(frameId > 300):
         PD.preProcessing(fgMask)
         PD.loopOnBB()
+        cv.waitKey(0)
+
 
  
     
