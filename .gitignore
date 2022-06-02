@@ -2,3 +2,5 @@ papers/*.pdf
 data/imgs/*
 data/videos/*
 */**/__pycache__
+**/*.csv
+**/*.pkl
