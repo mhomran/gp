@@ -250,5 +250,5 @@ class PlayerDetction:
         #self.IMG.showImage(self.contourFrame, "contours")
         self.IMG.showImage(self.MFAfter, "MFBB After non max")
         self.IMG.showImage(self.MFBefore, "MFBB before non max")
-        self.IMG.showImage(self.fgMask, "FGMASK")
+        #self.IMG.showImage(self.fgMask, "FGMASK")
         return

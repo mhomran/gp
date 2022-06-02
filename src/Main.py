@@ -38,14 +38,8 @@ while True:
     if(frameId > 300):
         PD.preProcessing(fgMask)
         PD.loopOnBB()
-        cv.waitKey(0)
+        cv.waitKey(1)
 
-
- 
-    
     keyboard = cv.waitKey(1)
     if keyboard == 'q' or keyboard == 27:
         break
-
-
-
