@@ -58,10 +58,11 @@ class PlayerTracker:
     # Model Field
     MF = ModelField(lmrframe)
     particles = MF._get_particles()
-    self.IMG = ImageClass()
+    MF._save_particles()
     
     # Background
     self.frameId = 0
+    self.IMG = ImageClass()
     self.PD = PlayerDetection(particles, self.IMG)
 
     # performance

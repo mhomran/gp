@@ -25,6 +25,6 @@ class ImageClass:
         return img
 
     def writeTxt(self, frame, id):
-        cv.rectangle(frame, (10, 2), (100, 20), (255, 255, 255), -1)
+        cv.rectangle(frame, (10, 2), (300, 20), (255, 255, 255), -1)
         cv.putText(frame, str(id), (15, 15),
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
