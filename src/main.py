@@ -12,7 +12,8 @@ if __name__ == "__main__":
   mcap = cv.VideoCapture('../data/videos/pyrVSmas/C.mp4')
   rcap = cv.VideoCapture('../data/videos/pyrVSmas/R.mp4')
 
-  tracker = PlayerTracker(lcap, mcap, rcap)
+  tracker = PlayerTracker(lcap, mcap, rcap, 
+  save_pd=True, saved_frames_no=75, samples_per_meter=1)
   tracker.run()
     
   lcap.release()

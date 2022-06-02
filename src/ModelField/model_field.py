@@ -14,7 +14,6 @@ SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3  # thickness of drawings
-SAMPLES_PER_METER = .5
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
 GUI_WIDTH = 1200
@@ -44,7 +43,7 @@ class GuiState(Enum):
 
 
 class ModelField:
-    def __init__(self, img):
+    def __init__(self, img, samples_per_meter):
         self.original_img = img.copy()
         self.original_img_without_BBs = img.copy()
 
@@ -55,10 +54,10 @@ class ModelField:
         self.grid = cv.imread("../data/imgs/pitch/h.png")
         self.grid_res_w = self.grid.shape[1]
         self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
-        self.sample_inc_w = int(self.px_per_m_w // SAMPLES_PER_METER)
+        self.sample_inc_w = int(self.px_per_m_w // samples_per_meter)
         self.grid_res_h = self.grid.shape[0]
         self.px_per_m_h = self.grid_res_h // SOCCER_HEIGHT_M
-        self.sample_inc_h = int(self.px_per_m_h // SAMPLES_PER_METER)
+        self.sample_inc_h = int(self.px_per_m_h // samples_per_meter)
 
         self.clicks = []
         self.s = None  # particles
@@ -283,6 +282,6 @@ class ModelField:
         return self.s
 
     def _save_particles(self):
-      with open('file.pkl', 'wb') as f:
+      with open('particles.pkl', 'wb') as f:
         pickle.dump(self.s, f)
         f.close()

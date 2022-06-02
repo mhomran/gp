@@ -1,5 +1,8 @@
+import os
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
+from PlayerDetection.TagReader import TagReader
+from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
@@ -16,7 +19,9 @@ class PlayerTracker:
 
   GUI_WIDTH = 1200
 
-  def __init__(self, lcap, mcap, rcap):
+  def __init__(self, lcap, mcap, rcap, 
+  save_pd=False, saved_frames_no=1200, samples_per_meter=3
+  , pd_frame_no=300):
     self.lcap = lcap
     self.mcap = mcap
     self.rcap = rcap
@@ -53,13 +58,19 @@ class PlayerTracker:
     lmrframe, lmrframe_gpu = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
     
     # Model Field
-    MF = ModelField(lmrframe)
+    MF = ModelField(lmrframe, samples_per_meter)
     particles = MF._get_particles()
-    self.IMG = ImageClass()
+    MF._save_particles()
     
     # Background
     self.frameId = 0
+    self.IMG = ImageClass()
     self.PD = PlayerDetection(particles, self.IMG)
+    self.save_pd = save_pd
+    self.saved_frames_no = saved_frames_no
+    self.save_pd_init = False
+    self.pd_frame_no = pd_frame_no
+    self.pd_learned = False
 
     # performance
     self.frame_count = 0
@@ -156,7 +167,10 @@ class PlayerTracker:
 
       # 5- Player Detection
       fgMask = self.PD.subBG(lmrframe_gpu)
-      if(self.frameId > 300):
+      if self.frameId > self.pd_frame_no:
+        self.pd_learned = True
+      
+      if self.pd_learned:
         self.PD.preProcessing(fgMask)
         self.PD.loopOnBB()
 
@@ -164,14 +178,37 @@ class PlayerTracker:
       self.IMG.showImage(lmrframe, "Frame")
       keyboard = cv.waitKey(1)
       if keyboard == 'q' or keyboard == 27:
-          break
+        break
 
       # 6- Calculate performance for the whole pipeline
       self._calculate_performance()
 
       # 7- Save
-      # self.out.write(lmrframe)
-      
+      if self.save_pd and self.pd_learned:
+        if not self.save_pd_init:
+          self.frameId = 0
+          self.lcap.set(cv.CAP_PROP_POS_FRAMES, self.frameId)
+          self.mcap.set(cv.CAP_PROP_POS_FRAMES, self.frameId)
+          self.rcap.set(cv.CAP_PROP_POS_FRAMES, self.frameId)
+
+          exists = os.path.exists("q")
+          if not exists:
+            os.makedirs("q")
+          exists = os.path.exists("q_img")
+          if not exists:
+            os.makedirs("q_img")
+          self.save_pd_init = True
+        else:
+          if self.frameId < self.saved_frames_no:
+            # save frame
+            self.out.write(lmrframe)
+            # save tags
+            q, q_img = self.PD.getOutputPD()
+            TagWriter.write(f"q/{self.frameId}.csv", q)
+            TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
+          else:
+            break
+      print(self.frameId)
       self.frameId += 1
 
 
