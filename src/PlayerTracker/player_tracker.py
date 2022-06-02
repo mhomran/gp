@@ -1,7 +1,6 @@
 import os
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
-from PlayerDetection.TagReader import TagReader
 from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter

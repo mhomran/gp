@@ -3,7 +3,6 @@ import numpy as np
 from enum import Enum
 import imutils
 import pickle
-from scipy.optimize import fsolve
 
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)

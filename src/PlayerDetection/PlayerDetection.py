@@ -3,16 +3,16 @@ import numpy as np
 import csv
 from imutils.object_detection import non_max_suppression
 
-import time
-
 BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
 
 KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
+BB_MARGIN = 5
 
 VERTICAL_TH = .15
+HEAD_VERTICAL_TH = .1
 HORIZONTAL_TH = .2
 IOU_TH = .2
 
@@ -51,9 +51,6 @@ class PlayerDetection:
 
         self.frame_gpu = cv.cuda_GpuMat()
 
-        self.output_q = []
-        self.output_q_img = []
-
     def subBG(self, frame_gpu):
         self.frame = frame_gpu.download()
         # will be removed
@@ -62,7 +59,7 @@ class PlayerDetection:
         return fgMask_gpu.download()
 
     def setFramesForDisplay(self):
-        self.MFfrmae = self.frame.copy()
+        self.MFAfter = self.frame.copy()
         self.MFBefore = self.frame.copy()
         self.contourFrame = self.frame.copy()
 
@@ -123,10 +120,9 @@ class PlayerDetection:
         return roiL, roiR
 
     def getRatio(self, img):
+        h, w = img.shape
         number_of_white_pix = np.sum(img == 255)
-        number_of_black_pix = np.sum(img == 0)
-        percentage = round(number_of_white_pix /
-                           (number_of_white_pix+number_of_black_pix), 2)
+        percentage = number_of_white_pix / (h*w)
 
         return percentage
 
@@ -135,6 +131,50 @@ class PlayerDetection:
             return False, 0
 
         return True, round((p1+p2+p3)/3, 2)
+
+    def IOU(self, B1, B2):
+        dx = min(B1.br[0], B2.br[0]) - max(B1.tl[0], B2.tl[0])
+        dy = min(B1.br[1], B2.br[1]) - max(B1.tl[1], B2.tl[1])
+
+        area1 = (B1.br[0]-B1.tl[0])*(B1.br[1]-B1.tl[1])
+        area2 = (B2.br[0]-B2.tl[0])*(B2.br[1]-B2.tl[1])
+
+        intersection = dx*dy
+        union = area1+area2-intersection
+
+        assert union != 0
+        return round((intersection/union), 2)
+
+    def applyNonMax(self, particles):
+        i = 0
+        while(i < len(particles)):
+            j = i+1
+            while(j < len(particles)):
+                iou = self.IOU(particles[i].B, particles[j].B)
+                if(iou > IOU_TH):
+                    particles.pop(j)
+                    j = j-1
+                j = j+1
+            i = i+1
+        return particles
+
+    def nonMax(self, candid):
+        ratioVal = [particle.ratio for particle in candid]
+
+        rects = np.array([[particle.B.tl[0], particle.B.tl[1],
+                         particle.B.br[0], particle.B.br[1]] for particle in candid])
+
+        non_max = non_max_suppression(
+            rects, probs=ratioVal, overlapThresh=IOU_TH)
+
+        for particle in candid:
+            cv.rectangle(self.MFBefore, particle.B.tl,
+                         particle.B.br, (0, 255, 0), 1)
+
+        for (x1, y1, x2, y2) in non_max:
+            cv.rectangle(self.MFAfter, (x1, y1), (x2, y2), (255, 0, 0), 1)
+
+        return non_max
 
     def getParticlesInBB(self, B):
         MFBB = {}
@@ -151,18 +191,15 @@ class PlayerDetection:
                     MFBB[(x, y)] = self.particles[(x, y)]
 
         return MFBB
-
+    
     def getCandidateParticle(self, MFBB, particle,  NonMax):
-        roi1, roi2, roi3 = self.vertRoi(MFBB[particle].B)
-        pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
-        pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
-        pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
-        decisionV, ratio = self.getDecision(pRo1, pRo2, pRo3)
 
-        decisionH, pL, pR = self.hoizontalCheck(MFBB[particle])
+        decisionV, ratio = self.verticalCheck(MFBB[particle])
+        decisionH = self.hoizontalCheck(MFBB[particle])
 
         if(decisionV and decisionH):
             MFBB[particle].ratio = ratio
+            self.particles[particle].ratio = ratio
             NonMax.append(MFBB[particle])
 
     def hoizontalCheck(self, particle):
@@ -172,46 +209,50 @@ class PlayerDetection:
         pR = self.getRatio(
             self.fgMask[roiR[0]:roiR[1], roiR[2]:roiR[3]])
 
-        return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH), pL, pR
+        return (pL > HORIZONTAL_TH and pR > HORIZONTAL_TH)
+
+    def verticalCheck(self, particle):
+        roi1, roi2, roi3 = self.vertRoi(particle.B)
+        pRo1 = self.getRatio(self.fgMask[roi1[0]:roi1[1], roi1[2]:roi1[3]])
+        pRo2 = self.getRatio(self.fgMask[roi2[0]:roi2[1], roi2[2]:roi2[3]])
+        pRo3 = self.getRatio(self.fgMask[roi3[0]:roi3[1], roi3[2]:roi3[3]])
+        decisionV, ratio = self.getDecision(pRo1, pRo2, pRo3)
+
+        return decisionV, ratio
 
     def loopOnBB(self):
         candid = []
+
         for _, B in enumerate(self.BB):
+            newCandidate = []
             MFBB = self.getParticlesInBB(B)
-            # draw BB
-            cv.rectangle(self.frame, B.tl,
-                         B.br, (0, 255, 0), 1)
-
-            # get candidate particle
-            NonMax = []
             for particle in list(MFBB):
-                self.getCandidateParticle(MFBB, particle, NonMax)
-            candid = candid + NonMax
+                self.getCandidateParticle(MFBB, particle,  newCandidate)
+            candid = candid+newCandidate
 
-        self.IMG.showImage(self.frame, "BB")
+        self.outputPD = self.nonMax(candid)
+        self.displayIMGs()
+    
 
-        rects = np.array([[particle.B.tl[0], particle.B.tl[1],
-                         particle.B.br[0], particle.B.br[1]] for particle in candid])
+    def displayIMGs(self):
+        #self.IMG.showImage(self.contourFrame, "contours")
+        self.IMG.showImage(self.MFAfter, "MFBB After non max")
+        self.IMG.showImage(self.MFBefore, "MFBB before non max")
+        #self.IMG.showImage(self.fgMask, "FGMASK")
+        return
 
-        non_max = non_max_suppression(rects, probs=None, overlapThresh=IOU_TH)
+    def getOutputPD(self):
+        output_q_img = []
+        output_q = []
         
-        self.output_q_img = []
-        self.output_q = []
-        
-        for (x1, y1, x2, y2) in non_max:
-            cv.rectangle(self.MFfrmae, (x1, y1), (x2, y2), (255, 0, 0), 1)
-
+        for (x1, y1, x2, y2) in self.outputPD:
             w = x2 - x1
             x = x1 + w // 2
             y = y2
             
             q = self.particles[(x, y)].q
             q_img = (x, y)
-            self.output_q.append(q)
-            self.output_q_img.append(q_img)
+            output_q.append(q)
+            output_q_img.append(q_img)
 
-        self.IMG.showImage(self.MFfrmae, "MFBB After non max")
-
-
-    def getOutputPD(self):
-        return self.output_q, self.output_q_img
+        return output_q, output_q_img
