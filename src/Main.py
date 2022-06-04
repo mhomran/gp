@@ -6,7 +6,12 @@ import pickle
 import cv2 as cv
 import copy
 import timeit
+import imutils
 IMG = ImageClass('../data/videos/Video.avi')
+
+BGIMG = cv.imread('./backGround.png')
+
+BGIMG = imutils.resize(BGIMG, 1200)
 
 # ret, frame, frameId = IMG.readFrame()
 # MF = ModelField(frame)
@@ -21,7 +26,7 @@ with open('file3.pkl', 'rb') as f:
     particles_ORG = pickle.load(f)
 
 particles = copy.deepcopy(particles_ORG)
-PD = PlayerDetction(particles, IMG)
+PD = PlayerDetction(particles, IMG,BGIMG)
 
 
 while True:
@@ -35,10 +40,10 @@ while True:
     IMG.writeTxt(frame)
     IMG.showImage(frame, "Frame")
 
-    if(frameId > 300):
-        PD.preProcessing(fgMask)
-        PD.loopOnBB()
-        cv.waitKey(1)
+    
+    PD.preProcessing(fgMask)
+    PD.loopOnBB()
+    cv.waitKey(1)
 
     keyboard = cv.waitKey(1)
     if keyboard == 'q' or keyboard == 27:

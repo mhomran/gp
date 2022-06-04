@@ -4,13 +4,13 @@ import numpy as np
 import csv
 from imutils.object_detection import non_max_suppression
 import timeit
-BACK_SUB_HISTORY = 500
-BACK_SUB_THRE = 16
-BACK_SUB_DETECT_SHADOW = False
 
 KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
-BB_MARGIN = 5
+BB_MARGIN = 2
+
+BG_THRESHOLD_LOWER = 10
+BG_THRESHOLD_HIGHER = 255
 
 VERTICAL_TH = .15
 HEAD_VERTICAL_TH = .1
@@ -24,22 +24,8 @@ class BoundingBox:
         self.br = br
 
 
-class PlayerDetectionModel:
-    def __init__(self):
-        self.header = ['v1', 'v2', 'v3', 'hl', 'hr']
-        self.data = None
-
-    def saveModel(self):
-        with open('kmeans.csv', 'w', encoding='UTF8', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(self.header)
-            writer.writerows(self.data)
-
-
 class PlayerDetction:
-    def __init__(self, particles, IMG):
-        self.backSub = cv.createBackgroundSubtractorMOG2(
-            BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
+    def __init__(self, particles, IMG, BGIMG):
 
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
         self.contours = []
@@ -54,16 +40,18 @@ class PlayerDetction:
         self.MFBefore = None
         self.contourFrame = None
         self.outputPD = None
+        self.BGIMG = BGIMG
 
     def subBG(self, frame):
         self.frame = frame
         # will be removed
         self.setFramesForDisplay()
-        frame = self.backSub.apply(frame)
+        subtract = cv.absdiff(frame, self.BGIMG)
+        img_gray = cv.cvtColor(subtract, cv.COLOR_BGR2GRAY)
+        _, subtract = cv.threshold(
+            img_gray, BG_THRESHOLD_LOWER, BG_THRESHOLD_HIGHER, cv.THRESH_BINARY)
 
-        # shadow
-        # _, frame = cv.threshold(frame, 254, 255, cv.THRESH_BINARY)
-        return frame
+        return subtract
 
     def setFramesForDisplay(self):
         self.MFAfter = self.frame.copy()
@@ -249,6 +237,21 @@ class PlayerDetction:
     def displayIMGs(self):
         #self.IMG.showImage(self.contourFrame, "contours")
         self.IMG.showImage(self.MFAfter, "MFBB After non max")
-        self.IMG.showImage(self.MFBefore, "MFBB before non max")
+        #self.IMG.showImage(self.MFBefore, "MFBB before non max")
         #self.IMG.showImage(self.fgMask, "FGMASK")
         return
+
+    def getOutputPD(self):
+        output_q_img = []
+        output_q = []
+        
+        for (x1, y1, x2, y2) in self.outputPD:
+            w = x2 - x1
+            x = x1 + w // 2
+            y = y2
+            
+            q = self.particles[(x, y)].q
+            q_img = (x, y)
+            output_q.append(q)
+            output_q_img.append(q_img)    
+        return output_q, output_q_img    
