@@ -1,21 +1,21 @@
 import cv2 as cv
 import numpy as np
-import csv
 from imutils.object_detection import non_max_suppression
-
-BACK_SUB_HISTORY = 500
-BACK_SUB_THRE = 16
-BACK_SUB_DETECT_SHADOW = False
 
 KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
-BB_MARGIN = 5
+BB_MARGIN = 2
+
+BG_THRESHOLD_LOWER = 10
+BG_THRESHOLD_HIGHER = 255
 
 VERTICAL_TH = .15
 HEAD_VERTICAL_TH = .1
 HORIZONTAL_TH = .2
 IOU_TH = .2
 
+LOW_TH = 30
+HIGH_TH = 200
 
 class BoundingBox:
     def __init__(self, tl, br):
@@ -23,14 +23,9 @@ class BoundingBox:
         self.br = br
 
 
-class PlayerDetection:
-    LOW_TH = 30
-    HIGH_TH = 200
-    LEARNING_RATE = -1
 
-    def __init__(self, particles, IMG):
-        self.backSub = cv.cuda.createBackgroundSubtractorMOG2(
-            BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
+class PlayerDetection:
+    def __init__(self, particles, IMG, BGIMG):
 
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
         self.contours = []
@@ -45,18 +40,22 @@ class PlayerDetection:
         self.MFBefore = None
         self.contourFrame = None
         self.outputPD = None
+        self.BGIMG = BGIMG
 
         self.morph_filter = cv.cuda.createMorphologyFilter(cv.MORPH_OPEN, cv.CV_8UC1, self.kernel)
-        self.canny_filter = cv.cuda.createCannyEdgeDetector(PlayerDetection.LOW_TH, PlayerDetection.HIGH_TH)
+        self.canny_filter = cv.cuda.createCannyEdgeDetector(LOW_TH, HIGH_TH)
 
         self.frame_gpu = cv.cuda_GpuMat()
 
-    def subBG(self, frame_gpu):
-        self.frame = frame_gpu.download()
-        # will be removed
+    def subBG(self, frame):
+        self.frame = frame
         self.setFramesForDisplay()
-        fgMask_gpu = self.backSub.apply(frame_gpu, PlayerDetection.LEARNING_RATE, None)
-        return fgMask_gpu.download()
+        subtract = cv.absdiff(self.frame, self.BGIMG)
+        img_gray = cv.cvtColor(subtract, cv.COLOR_BGR2GRAY)
+        _, subtract = cv.threshold(
+            img_gray, BG_THRESHOLD_LOWER, BG_THRESHOLD_HIGHER, cv.THRESH_BINARY)
+
+        return subtract
 
     def setFramesForDisplay(self):
         self.MFAfter = self.frame.copy()
@@ -237,7 +236,7 @@ class PlayerDetection:
     def displayIMGs(self):
         #self.IMG.showImage(self.contourFrame, "contours")
         self.IMG.showImage(self.MFAfter, "MFBB After non max")
-        self.IMG.showImage(self.MFBefore, "MFBB before non max")
+        #self.IMG.showImage(self.MFBefore, "MFBB before non max")
         #self.IMG.showImage(self.fgMask, "FGMASK")
         return
 
