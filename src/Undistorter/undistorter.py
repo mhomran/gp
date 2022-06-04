@@ -13,8 +13,9 @@ class Undistorter:
 
   def _compute_maps(self, img):
     r = lambda x_d, y_d, c_x, c_y: math.sqrt(((x_d - c_x) ** 2) + ((y_d - c_y) ** 2))
-    x_img = lambda x_d, c_x, r, k_1: c_x + (1 + k_1*r)*(x_d - c_x)
-    y_img = lambda y_d, c_y, r, k_1: c_y + (1 + k_1*r)*(y_d - c_y)
+    # use the inverse eqn to cancel the inverse effect of the remap function
+    x_img = lambda x_d, c_x, r, k_1: c_x + (x_d - c_x) / (1 + k_1*r)
+    y_img = lambda y_d, c_y, r, k_1: c_y + (y_d - c_y) / (1 + k_1*r)
 
     h, w = img.shape[:2]
     c_x = w//2

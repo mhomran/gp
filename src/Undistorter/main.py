@@ -4,10 +4,12 @@ import math
 from scipy import stats
 import imutils
 from undistorter import *
+import matplotlib.pyplot as plt
+
 
 # TODO: Configure
-IMG_PATH = "C0.jpg"
-LINES_NO = 4
+IMG_PATH = "L0.jpg"
+LINES_NO = 3
 POINTS_PER_LINE = 10
 
 # Constants
@@ -66,11 +68,15 @@ c_y = h//2
 points =[]
 lowest_error = float('inf')
 bestk1 = float('inf')
+best_new_x = []
+best_new_y = []
 
 for k1 in range(int(-1e4), int(1e4), 1):
     k1 = k1/1e6
     k1s.append(k1)
     error = 0
+    all_new_x = []
+    all_new_y = []
 
     for line in lines:
         
@@ -84,21 +90,32 @@ for k1 in range(int(-1e4), int(1e4), 1):
             new_y = y_img(y, c_x, r(x, y, c_x, c_y), k1)
             new_xs.append(new_x)
             new_ys.append(new_y)
+            all_new_x.append(new_x)
+            all_new_y.append(new_y)
+
         # get the line equation
         slope, intercept, r_value, p_value, std_err = stats.linregress(new_xs,new_ys)
         for x,y in zip(new_xs,new_ys):
             error += (x*slope-y+intercept)**2/math.sqrt(1+slope**2)
+
     if error < lowest_error:
         lowest_error = error
         bestk1 = k1
- 
-bestk1 = -bestk1
+        best_new_x = all_new_x
+        best_new_y = all_new_y
+
 
 # visualization
-print(f"best K is {bestk1}")
-img = imutils.resize(original_img, width=w//2)
-myundistorter = Undistorter(img, bestk1) 
-img = myundistorter.undistort(img)
+print(f"best K: {bestk1}")
 
-cv2.imshow("new img", imutils.resize(img, width=GUI_WIDTH))
-cv2.waitKey(0)
+img = original_img
+myundistorter = Undistorter(img, bestk1) 
+img_gpu = cv.cuda_GpuMat()
+img_gpu.upload(img)
+img_gpu = myundistorter.undistort(img_gpu)
+img = img_gpu.download()
+
+plt.scatter(best_new_x, best_new_y)
+plt.show()
+
+cv2.imwrite(f"{IMG_PATH}_undistorted.png", img)

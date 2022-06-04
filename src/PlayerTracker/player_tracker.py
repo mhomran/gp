@@ -10,9 +10,9 @@ import imutils, time
 
 class PlayerTracker:
   # undistortion parameter
-  lk1 = -5e-06 
-  mk1 = 4.1e-05
-  rk1 = -1.5e-05
+  lk1 = 5e-06 
+  mk1 = -4.1e-05
+  rk1 = 1.5e-05
 
   RESIZE_FACTOR = 2
 
