@@ -36,7 +36,7 @@ while True:
     if frame is None:
         break
 
-    fgMask = PD.subBG(frame)
+    fgMask = PD.subBG(frame,frameId)
     IMG.writeTxt(frame)
     IMG.showImage(frame, "Frame")
 
