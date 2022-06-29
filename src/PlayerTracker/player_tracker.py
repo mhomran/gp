@@ -170,7 +170,7 @@ class PlayerTracker:
 
       # 5- Player Detection
       if self.pd_enable:
-        fgMask = self.PD.subBG(lmrframe)
+        fgMask = self.PD.subBG(lmrframe, self.frameId)
         
         self.PD.preProcessing(fgMask)
         self.PD.loopOnBB()
