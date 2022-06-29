@@ -1,4 +1,4 @@
-from PlayerDetection.PlayerDetection import PlayerDetction
+from PlayerDetection.PlayerDetection import PlayerDetection
 from PlayerDetection.ImageClass import ImageClass
 from ModelField.model_field import ModelField
 import numpy as np
@@ -26,7 +26,7 @@ with open('file3.pkl', 'rb') as f:
     particles_ORG = pickle.load(f)
 
 particles = copy.deepcopy(particles_ORG)
-PD = PlayerDetction(particles, IMG,BGIMG)
+PD = PlayerDetection(particles, IMG,BGIMG)
 
 
 while True:

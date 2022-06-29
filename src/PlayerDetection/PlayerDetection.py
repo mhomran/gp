@@ -24,7 +24,7 @@ class BoundingBox:
         self.br = br
 
 
-class PlayerDetction:
+class PlayerDetection:
     def __init__(self, particles, IMG, BGIMG):
 
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
