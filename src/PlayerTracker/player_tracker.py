@@ -20,7 +20,7 @@ class PlayerTracker:
 
   def __init__(self, lcap, mcap, rcap, 
   save_pd=False, saved_frames_no=1200, samples_per_meter=3
-  , pd_frame_no=300, pd_enable=True, mf_enable=True):
+  , pd_frame_no=300, pd_enable=True, mf_enable=True, clicks=None):
     self.lcap = lcap
     self.mcap = mcap
     self.rcap = rcap
@@ -59,7 +59,7 @@ class PlayerTracker:
     # Model Field
     self.mf_enable = mf_enable
     if self.mf_enable:
-      MF = ModelField(lmrframe, samples_per_meter)
+      MF = ModelField(lmrframe, samples_per_meter, clicks=clicks)
       particles = MF._get_particles()
       MF._save_particles()
     

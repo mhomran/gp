@@ -42,7 +42,7 @@ class GuiState(Enum):
 
 
 class ModelField:
-    def __init__(self, img, samples_per_meter):
+    def __init__(self, img, samples_per_meter, clicks=None):
         self.original_img = img.copy()
         self.original_img_without_BBs = img.copy()
 
@@ -66,18 +66,21 @@ class ModelField:
         self.gui_state = GuiState.STATE_CORNERS
         self.done = False
 
-        self._write_hint("choose the upper left corner")
+        if not clicks:
+            self._write_hint("choose the upper left corner")
 
-        # cv.namedWindow("GUI", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO)
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self.click_event)
-        while True:
-            cv.imshow('GUI', self.gui_img)
-            if self.done: 
-              cv.waitKey(2000)
-              cv.destroyAllWindows()
-              break
-            cv.waitKey(1)
+            cv.namedWindow("GUI")
+            cv.setMouseCallback('GUI', self.click_event)
+            while True:
+                cv.imshow('GUI', self.gui_img)
+                if self.done: 
+                    cv.waitKey(2000)
+                    cv.destroyAllWindows()
+                    break
+                cv.waitKey(1)
+        else:
+            for click in clicks:
+                self.click_event(cv.EVENT_LBUTTONDOWN, click[0], click[1])
 
     def _write_hint(self, msg, color=(0, 0, 0)):
         cv.rectangle(self.gui_img, (10, 2), (300, 20), (255, 255, 255), -1)
@@ -89,7 +92,7 @@ class ModelField:
         y = p[1] * self.original_img.shape[0] // self.gui_img.shape[0]
         return (x, y)
 
-    def click_event(self, event, x, y, flags, params):
+    def click_event(self, event, x, y, flags=None, params=None):
         # checking for left mouse clicks
         if event == cv.EVENT_LBUTTONDOWN:
             self.clicks.append(self._gui2orig((x, y)))
@@ -166,7 +169,7 @@ class ModelField:
                     self.s = self._construct_modelfield_img()
 
                     cv.imwrite("modelfield.png", self.grid)
-                    cv.imwrite("result.png", self.original_img)
+                    cv.imwrite("modelfield_BBs.png", self.original_img)
                     self._write_hint("Done", RED_COLOR)
                     self.done = True
 
