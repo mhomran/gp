@@ -7,7 +7,7 @@ from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
 import cv2 as cv
 import imutils
-
+import numpy as np
 class PlayerTracker:
   # undistortion parameter
   lk1 = 5e-06 
@@ -85,10 +85,10 @@ class PlayerTracker:
     out_h, out_w = lmrframe.shape[:2]
     self.fps = lcap.get(cv.CAP_PROP_FPS)
     self.out = cv.VideoWriter('output.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
-  
+    self.out_original = cv.VideoWriter('outputoriginal.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
   def __del__(self):
     self.out.release()
-  
+    self.out_original.release()
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
     self.lframe_gpu.upload(lframe)
     self.mframe_gpu.upload(mframe)
@@ -174,6 +174,10 @@ class PlayerTracker:
         
         self.PD.preProcessing(fgMask)
         self.PD.loopOnBB()
+        
+        lmrframe_original  = lmrframe.copy()
+        lmrframe[fgMask==0] = np.zeros(3)
+        self.IMG.showImage(lmrframe_original,'original')
 
         self.IMG.writeTxt(lmrframe, self.frameId)
         self.IMG.showImage(lmrframe, "Frame")
@@ -198,6 +202,7 @@ class PlayerTracker:
           if self.frameId < self.saved_frames_no:
             # save frame
             self.out.write(lmrframe)
+            self.out_original.write(lmrframe_original)
             if self.pd_enable:
               # save tags
               q, q_img = self.PD.getOutputPD()
