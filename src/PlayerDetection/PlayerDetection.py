@@ -3,13 +3,14 @@ import cv2 as cv
 import numpy as np
 import csv
 from imutils.object_detection import non_max_suppression
+from ModelField.model_field import BoundingBox
 import timeit
 
 KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
 BB_MARGIN = 2
 
-BACK_SUB_HISTORY = 150
+BACK_SUB_HISTORY = 500
 BACK_SUB_THRE = 16
 BACK_SUB_DETECT_SHADOW = False
 
@@ -23,19 +24,14 @@ HORIZONTAL_TH = .2
 IOU_TH = .2
 
 
-class BoundingBox:
-    def __init__(self, tl, br):
-        self.tl = tl
-        self.br = br
-
-
 class PlayerDetection:
-    def __init__(self, particles, IMG, BGIMG):
+    def __init__(self, MF, IMG, BGIMG):
         self.backSub = cv.createBackgroundSubtractorMOG2(
             BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
         self.contours = []
-        self.particles = particles
+        self.particles = MF._get_particles()
+        self.MF = MF
         self.openingImg = None
         self.fgMask = None
         self.BB = None
@@ -167,16 +163,14 @@ class PlayerDetection:
             i = i+1
         return particles
 
-    def nonMax(self, candid):
-        ratioVal = [particle.ratio for particle in candid]
-
+    def nonMax(self, particles):
         rects = np.array([[particle.B.tl[0], particle.B.tl[1],
-                         particle.B.br[0], particle.B.br[1]] for particle in candid])
+                         particle.B.br[0], particle.B.br[1]] for particle in particles])
 
         non_max = non_max_suppression(
-            rects, probs=ratioVal, overlapThresh=IOU_TH)
+            rects, probs=None, overlapThresh=IOU_TH)
 
-        for particle in candid:
+        for particle in particles:
             cv.rectangle(self.MFBefore, particle.B.tl,
                          particle.B.br, (0, 255, 0), 1)
 
@@ -186,7 +180,6 @@ class PlayerDetection:
         return non_max
 
     def getParticlesInBB(self, B):
-        MFBB = {}
         Sx = B.tl[0]
         Ex = B.br[0]
 
@@ -194,12 +187,9 @@ class PlayerDetection:
         Ey = B.br[1]
 
         # get all particle in BB
-        for y in range(Sy, Ey+1):
-            for x in range(Sx, Ex+1):
-                if self.particles.get((x, y)):
-                    MFBB[(x, y)] = self.particles[(x, y)]
-
-        return MFBB
+        x = (Sx+Ex)//2
+        y = Ey
+        return self.MF.get_nearest_particle((x, y))
 
     def getCandidateParticle(self, MFBB, particle,  NonMax):
 
@@ -230,23 +220,23 @@ class PlayerDetection:
         return decisionV, ratio
 
     def loopOnBB(self):
-        candid = []
-
+        particles = []
         for _, B in enumerate(self.BB):
-            newCandidate = []
-            MFBB = self.getParticlesInBB(B)
-            for particle in list(MFBB):
-                self.getCandidateParticle(MFBB, particle,  newCandidate)
-            candid = candid+newCandidate
+            particle = self.getParticlesInBB(B)
 
-        self.outputPD = self.nonMax(candid)
+            if(particle != None):
+                if((B.getArea()/particle.B.getArea()) < .5):
+                    continue
+                particles.append(particle)
+
+        self.outputPD = self.nonMax(particles)
         self.displayIMGs()
 
     def getOutputPD(self):
         return self.outputPD
 
     def displayIMGs(self):
-        #self.IMG.showImage(self.contourFrame, "contours")
+        self.IMG.showImage(self.contourFrame, "contours")
         self.IMG.showImage(self.MFAfter, "MFBB After non max")
         #self.IMG.showImage(self.MFBefore, "MFBB before non max")
         #self.IMG.showImage(self.fgMask, "FGMASK")

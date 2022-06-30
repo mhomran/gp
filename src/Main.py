@@ -13,20 +13,24 @@ BGIMG = cv.imread('./backGround.png')
 
 BGIMG = imutils.resize(BGIMG, 1200)
 
-# ret, frame, frameId = IMG.readFrame()
-# MF = ModelField(frame)
-# particles = MF._get_particles()
+# mf_gui_clicks = [(311, 110), (616, 101), (922, 103),  # the three top corners
+#                  (1196, 223), (619, 265), (27, 240),  # the three bottom corners
+#                  (195, 162), (193, 142),  # the left post corners
+#                  (1035, 152), (1037, 132)]  # the right post corners
 
-# with open('file3.pkl', 'wb') as f:
-#     pickle.dump(particles, f)
+# ret, frame, frameId = IMG.readFrame()
+# MF = ModelField(frame, 3, mf_gui_clicks)
+
+
+# with open('MF.pkl', 'wb') as f:
+#     pickle.dump(MF, f)
 # f.close()
 
-particles_ORG = {}
-with open('file3.pkl', 'rb') as f:
-    particles_ORG = pickle.load(f)
+MF = {}
+with open('MF.pkl', 'rb') as f:
+    MF = pickle.load(f)
 
-particles = copy.deepcopy(particles_ORG)
-PD = PlayerDetection(particles, IMG,BGIMG)
+PD = PlayerDetection(MF, IMG, BGIMG)
 
 
 while True:
@@ -36,15 +40,14 @@ while True:
     if frame is None:
         break
 
-    fgMask = PD.subBG(frame,frameId)
+    fgMask = PD.subBG(frame, frameId)
     IMG.writeTxt(frame)
     IMG.showImage(frame, "Frame")
 
-    
     PD.preProcessing(fgMask)
     PD.loopOnBB()
     cv.waitKey(1)
 
-    keyboard = cv.waitKey(1)
+    keyboard = cv.waitKey(0)
     if keyboard == 'q' or keyboard == 27:
         break

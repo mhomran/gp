@@ -1,9 +1,9 @@
+from ssl import HAS_SNI
 import cv2 as cv
 import numpy as np
 from enum import Enum
 import imutils
 import pickle
-
 
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)
@@ -14,7 +14,6 @@ SOCCER_WIDTH_M = 108
 
 # TODO: configure
 THICKNESS = 3  # thickness of drawings
-SAMPLES_PER_METER = 2
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
 GUI_WIDTH = 1200
@@ -24,6 +23,8 @@ class BoundingBox:
     def __init__(self, tl, br):
         self.tl = tl
         self.br = br
+    def getArea(self):
+        return (self.br[0] - self.tl[0]) * (self.br[1] - self.tl[1])    
 
     def draw(self, img):
         cv.rectangle(img, self.tl, self.br, RED_COLOR, THICKNESS)
@@ -44,7 +45,7 @@ class GuiState(Enum):
 
 
 class ModelField:
-    def __init__(self, img):
+    def __init__(self, img, samples_per_meter, clicks=None):
         self.original_img = img.copy()
         self.original_img_without_BBs = img.copy()
 
@@ -55,31 +56,35 @@ class ModelField:
         self.grid = cv.imread("../data/imgs/pitch/h.png")
         self.grid_res_w = self.grid.shape[1]
         self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
-        self.sample_inc_w = int(self.px_per_m_w // SAMPLES_PER_METER)
+        self.sample_inc_w = int(self.px_per_m_w // samples_per_meter)
         self.grid_res_h = self.grid.shape[0]
         self.px_per_m_h = self.grid_res_h // SOCCER_HEIGHT_M
-        self.sample_inc_h = int(self.px_per_m_h // SAMPLES_PER_METER)
+        self.sample_inc_h = int(self.px_per_m_h // samples_per_meter)
 
         self.clicks = []
-        self.s = None  # particles
+        self.s = None  # particles indexed by q_img
+        self.s_by_q = None  # particles indexed by q
         self.L_horizon = None  # the horizon line (m, c)
         self.hcam = None  # camera height
         self.H = None  # homography matrix
         self.gui_state = GuiState.STATE_CORNERS
         self.done = False
 
-        self._write_hint("choose the upper left corner")
+        if not clicks:
+            self._write_hint("choose the upper left corner")
 
-        # cv.namedWindow("GUI", cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO)
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self.click_event)
-        while True:
-            cv.imshow('GUI', self.gui_img)
-            if self.done:
-                cv.waitKey(2000)
-                cv.destroyAllWindows()
-                break
-            cv.waitKey(1)
+            cv.namedWindow("GUI")
+            cv.setMouseCallback('GUI', self.click_event)
+            while True:
+                cv.imshow('GUI', self.gui_img)
+                if self.done:
+                    cv.waitKey(2000)
+                    cv.destroyAllWindows()
+                    break
+                cv.waitKey(1)
+        else:
+            for click in clicks:
+                self.click_event(cv.EVENT_LBUTTONDOWN, click[0], click[1])
 
     def _write_hint(self, msg, color=(0, 0, 0)):
         cv.rectangle(self.gui_img, (10, 2), (300, 20), (255, 255, 255), -1)
@@ -91,7 +96,7 @@ class ModelField:
         y = p[1] * self.original_img.shape[0] // self.gui_img.shape[0]
         return (x, y)
 
-    def click_event(self, event, x, y, flags, params):
+    def click_event(self, event, x, y, flags=None, params=None):
         # checking for left mouse clicks
         if event == cv.EVENT_LBUTTONDOWN:
             self.clicks.append(self._gui2orig((x, y)))
@@ -104,12 +109,14 @@ class ModelField:
                     if len(self.clicks) == 1:
                         self._write_hint("choose the upper center corner")
                     elif len(self.clicks) == 2:
+                        self.upper_center = self.clicks[-1]
                         self._write_hint("choose the upper right corner")
                     elif len(self.clicks) == 3:
                         self._write_hint("choose the bottom right corner")
                     elif len(self.clicks) == 4:
                         self._write_hint("choose the bottom center corner")
                     elif len(self.clicks) == 5:
+                        self.bottom_center = self.clicks[-1]
                         self._write_hint("choose the bottom left corner")
 
                 elif len(self.clicks) == 6:
@@ -119,6 +126,7 @@ class ModelField:
                                        [half_w, self.grid_res_h],
                                        [0, self.grid_res_h]])
                     self.lH = cv.getPerspectiveTransform(pts2, pts1)
+                    self.lH_inv = np.linalg.inv(self.lH)
 
                     A, B, C, D = pts1
                     self.lL_horizon = self._calculate_horizon(A, B, C, D)
@@ -128,6 +136,7 @@ class ModelField:
                                        [self.grid_res_w, self.grid_res_h],
                                        [half_w, self.grid_res_h]])
                     self.rH = cv.getPerspectiveTransform(pts2, pts1)
+                    self.rH_inv = np.linalg.inv(self.rH)
 
                     A, B, C, D = pts1
                     self.rL_horizon = self._calculate_horizon(A, B, C, D)
@@ -167,10 +176,10 @@ class ModelField:
                         self.rL_horizon, u_bottom)
                     self.rhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
 
-                    self.s = self._construct_modelfield_img()
+                    self.s, self.s_by_q = self._construct_modelfield_img()
 
                     cv.imwrite("modelfield.png", self.grid)
-                    cv.imwrite("result.png", self.original_img)
+                    cv.imwrite("modelfield_BBs.png", self.original_img)
                     self._write_hint("Done", RED_COLOR)
                     self.done = True
 
@@ -242,6 +251,7 @@ class ModelField:
 
     def _construct_modelfield_img(self):
         s_total = {}
+        s_by_q_total = {}
 
         for row in range(self.sample_inc_h, self.grid_res_h, self.sample_inc_h):
             for col in range(self.sample_inc_w, self.grid_res_w, self.sample_inc_w):
@@ -275,19 +285,76 @@ class ModelField:
                 s = Particle(q, q_img, B, a)
 
                 s_total[q_img] = s
+                s_by_q_total[q] = s
 
                 B.draw(self.original_img)
-                cv.imwrite(f"BBs/{row}_{col}.png", a)
                 self.grid = cv.circle(self.grid, q, 2, BLUE_COLOR, cv.FILLED)
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
 
-        return s_total
+        return s_total, s_by_q_total
+
+    def get_nearest_particle(self, q_img):
+        """
+        Description: get the particle that's nearest to the point p
+
+        Input:
+            - p: point (x, y)
+
+        output:
+            - particle: the nearest particle object or None in case it's out of 
+            the field.
+        """
+        x_img, y_img = q_img
+        particle = None
+
+        # Which half the point exists in to know which H_inv to use
+        H_inv = None
+        # y = ax + b
+        A, B = self.upper_center, self.bottom_center
+        a = (A[1] - B[1])/(A[0] - B[0])
+        b = A[1] - a * A[0]
+        if (y_img - a * x_img - b) > 0:
+            H_inv = self.lH_inv
+        else:
+            H_inv = self.rH_inv
+
+        q = cv.perspectiveTransform(np.array([[q_img]], np.float32), H_inv)
+        q = tuple(q.squeeze())
+        x, y = (int(q[0]), int(q[1]))
+
+        n_x, n_y = round(x / self.sample_inc_w), round(y / self.sample_inc_h)
+        n_x, n_y = self.sample_inc_w * int(n_x), self.sample_inc_h * int(n_y)
+
+        if (n_x, n_y) in self.s_by_q:
+            particle = self.s_by_q[(n_x, n_y)]
+
+        return particle
+        # get the four corners of the box surrounding the input point
+        # x_tl = x - x % self.sample_inc_w
+        # y_tl = y - y % self.sample_inc_h
+        # x_tr = x_tl + self.sample_inc_w
+        # y_tr = y_tl
+        # x_bl = x_tl
+        # y_bl = y_tl + self.sample_inc_h
+        # x_br = x_tr
+        # y_br = y_bl
+
+        # min_dst = np.inf
+        # corners = [(x_tl, y_tl), (x_tr, y_tr), (x_br, y_br), (x_bl, y_bl)]
+        # print(corners)
+        # for corner in corners:
+        #     dst = self._euclidean_distance(corner, q)
+        #     if min_dst > dst and corner in self.s_by_q:
+        #         min_dst = dst
+        #        particle = self.s_by_q[corner]
+
+        # return particle
 
     def _get_particles(self):
         return self.s
 
     def _save_particles(self):
-        with open('file.pkl', 'wb') as f:
+        with open('particles.pkl', 'wb') as f:
             pickle.dump(self.s, f)
             f.close()
