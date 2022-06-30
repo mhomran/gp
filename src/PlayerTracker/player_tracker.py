@@ -8,6 +8,7 @@ from ModelField.model_field import ModelField
 import cv2 as cv
 import imutils
 import numpy as np
+
 class PlayerTracker:
   # undistortion parameter
   lk1 = 5e-06 
@@ -19,8 +20,10 @@ class PlayerTracker:
   GUI_WIDTH = 1200
 
   def __init__(self, lcap, mcap, rcap, 
-  save_pd=False, saved_frames_no=1200, samples_per_meter=3
-  , pd_frame_no=300, pd_enable=True, mf_enable=True, clicks=None):
+  bg_enable=False, mf_enable=True, pd_enable=True, save_pd=False, 
+  saved_frames_no=1200, samples_per_meter=3, pd_frame_no=300, clicks=None,
+  bg_history=500, bg_th=16, bg_limit=1000):
+
     self.lcap = lcap
     self.mcap = mcap
     self.rcap = rcap
@@ -56,6 +59,13 @@ class PlayerTracker:
     self.lmr_stitcher = Stitcher(lmframe, mrframe, "l")
     lmrframe, lmrframe_gpu = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
     
+    # background subtractor
+    self.bg_enable = bg_enable
+    if self.bg_enable:
+      self.bg_model = cv.createBackgroundSubtractorMOG2(
+        bg_history, bg_th, True)
+      self.bg_limit = bg_limit
+
     # Model Field
     self.mf_enable = mf_enable
     if self.mf_enable:
@@ -70,10 +80,10 @@ class PlayerTracker:
     self.saved_frames_no = saved_frames_no
     self.save_pd_init = False
     self.pd_frame_no = pd_frame_no
-    if self.pd_enable:
-      bg_img = cv.imread('./PlayerDetection/back_ground_resized.png')
+    if self.pd_enable and self.mf_enable:
+      bg_img = cv.imread('./background.png')
       self.IMG = ImageClass()
-      self.PD = PlayerDetection(particles, self.IMG, bg_img)
+      self.PD = PlayerDetection(MF, self.IMG, bg_img)
 
     # performance
     self.frame_count = 0
@@ -86,9 +96,11 @@ class PlayerTracker:
     self.fps = lcap.get(cv.CAP_PROP_FPS)
     self.out = cv.VideoWriter('output.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
     self.out_original = cv.VideoWriter('outputoriginal.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
+  
   def __del__(self):
     self.out.release()
     self.out_original.release()
+
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
     self.lframe_gpu.upload(lframe)
     self.mframe_gpu.upload(mframe)
@@ -169,6 +181,13 @@ class PlayerTracker:
       lmrframe, _  = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
 
       # 5- Player Detection
+      if self.bg_enable:
+        if self.frameId < self.bg_limit:
+          self.bg_model.apply(lmrframe)
+        elif self.frameId == self.bg_limit:
+          bg_img = self.bg_model.getBackgroundImage()
+          cv.imwrite("background.png", bg_img)
+
       if self.pd_enable:
         fgMask = self.PD.subBG(lmrframe, self.frameId)
         
@@ -189,7 +208,7 @@ class PlayerTracker:
       self._calculate_performance()
 
       # 7- Save
-      if self.save_pd:
+      if self.save_pd and self.pd_enable:
         if not self.save_pd_init:
           exists = os.path.exists("q")
           if not exists:
@@ -208,10 +227,8 @@ class PlayerTracker:
               q, q_img = self.PD.getOutputPD()
               TagWriter.write(f"q/{self.frameId}.csv", q)
               TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
-          else:
-            break
 
-      print(self.frameId)
+      print(f"frame #{self.frameId}")
       self.frameId += 1
 
 

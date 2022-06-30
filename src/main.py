@@ -18,7 +18,8 @@ if __name__ == "__main__":
                     (1035, 152), (1037, 132) ] # the right post corners
   
   tracker = PlayerTracker(lcap, mcap, rcap, 
-  save_pd=True, saved_frames_no=30, samples_per_meter=2,
+  mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
+  saved_frames_no=100, samples_per_meter=1,
   clicks=mf_gui_clicks)
 
   tracker.run()

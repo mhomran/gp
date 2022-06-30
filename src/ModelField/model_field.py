@@ -1,4 +1,3 @@
-from ssl import HAS_SNI
 import cv2 as cv
 import numpy as np
 from enum import Enum
@@ -23,6 +22,8 @@ class BoundingBox:
     def __init__(self, tl, br):
         self.tl = tl
         self.br = br
+    def getArea(self):
+        return (self.br[0] - self.tl[0]) * (self.br[1] - self.tl[1])    
 
     def draw(self, img):
         cv.rectangle(img, self.tl, self.br, RED_COLOR, THICKNESS)
@@ -75,7 +76,7 @@ class ModelField:
             cv.setMouseCallback('GUI', self.click_event)
             while True:
                 cv.imshow('GUI', self.gui_img)
-                if self.done: 
+                if self.done:
                     cv.waitKey(2000)
                     cv.destroyAllWindows()
                     break
@@ -125,7 +126,6 @@ class ModelField:
                                         [0, self.grid_res_h]])
                     self.lH = cv.getPerspectiveTransform(pts2, pts1)
                     self.lH_inv = np.linalg.inv(self.lH)
-                    
                     A, B, C, D = pts1
                     self.lL_horizon = self._calculate_horizon(A, B, C, D)
                     
@@ -135,7 +135,6 @@ class ModelField:
                                         [half_w, self.grid_res_h]])
                     self.rH = cv.getPerspectiveTransform(pts2, pts1)
                     self.rH_inv = np.linalg.inv(self.rH)
-
 
                     A, B, C, D = pts1
                     self.rL_horizon = self._calculate_horizon(A, B, C, D)
@@ -282,7 +281,6 @@ class ModelField:
                 s_by_q_total[q] = s
 
                 B.draw(self.original_img)
-                cv.imwrite(f"BBs/{row}_{col}.png", a)
                 self.grid = cv.circle(self.grid, q, 2, BLUE_COLOR, cv.FILLED)
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
@@ -295,7 +293,6 @@ class ModelField:
 
         Input:
             - p: point (x, y)
-        
         output:
             - particle: the nearest particle object or None in case it's out of 
             the field.
@@ -309,7 +306,7 @@ class ModelField:
         A, B = self.upper_center, self.bottom_center
         a = (A[1] - B[1])/(A[0] - B[0])
         b = A[1] - a * A[0]
-        if (y_img - a * x_img - b) < 0:
+        if (y_img - a * x_img - b) > 0:
             H_inv = self.lH_inv
         else:
             H_inv = self.rH_inv
@@ -319,7 +316,7 @@ class ModelField:
         x, y = (int(q[0]), int(q[1]))
 
         n_x, n_y = round(x / self.sample_inc_w), round(y / self.sample_inc_h)
-        n_x, n_y =  self.sample_inc_w * int(n_x), self.sample_inc_h * int(n_y)
+        n_x, n_y = self.sample_inc_w * int(n_x), self.sample_inc_h * int(n_y)
 
         if (n_x, n_y) in self.s_by_q:
             particle = self.s_by_q[(n_x, n_y)]
@@ -343,14 +340,13 @@ class ModelField:
         #     if min_dst > dst and corner in self.s_by_q:
         #         min_dst = dst
         #        particle = self.s_by_q[corner]
-                
 
-        #return particle
+        # return particle
 
     def _get_particles(self):
         return self.s
 
     def _save_particles(self):
-      with open('particles.pkl', 'wb') as f:
-        pickle.dump(self.s, f)
-        f.close()
+        with open('particles.pkl', 'wb') as f:
+            pickle.dump(self.s, f)
+            f.close()
