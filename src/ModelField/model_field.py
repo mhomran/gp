@@ -1,3 +1,4 @@
+from ssl import HAS_SNI
 import cv2 as cv
 import numpy as np
 from enum import Enum
@@ -59,7 +60,8 @@ class ModelField:
         self.sample_inc_h = int(self.px_per_m_h // samples_per_meter)
 
         self.clicks = []
-        self.s = None  # particles
+        self.s = None  # particles indexed by q_img
+        self.s_by_q = None  # particles indexed by q
         self.L_horizon = None  # the horizon line (m, c)
         self.hcam = None  # camera height
         self.H = None  # homography matrix
@@ -105,12 +107,14 @@ class ModelField:
                     if len(self.clicks) == 1:
                         self._write_hint("choose the upper center corner")
                     elif len(self.clicks) == 2:
+                        self.upper_center = self.clicks[-1]
                         self._write_hint("choose the upper right corner")
                     elif len(self.clicks) == 3:
                         self._write_hint("choose the bottom right corner")
                     elif len(self.clicks) == 4:
                         self._write_hint("choose the bottom center corner")
                     elif len(self.clicks) == 5:
+                        self.bottom_center = self.clicks[-1]
                         self._write_hint("choose the bottom left corner")
 
                 elif len(self.clicks) == 6:
@@ -120,6 +124,7 @@ class ModelField:
                                         [half_w, self.grid_res_h], 
                                         [0, self.grid_res_h]])
                     self.lH = cv.getPerspectiveTransform(pts2, pts1)
+                    self.lH_inv = np.linalg.inv(self.lH)
                     
                     A, B, C, D = pts1
                     self.lL_horizon = self._calculate_horizon(A, B, C, D)
@@ -129,6 +134,8 @@ class ModelField:
                                         [self.grid_res_w, self.grid_res_h], 
                                         [half_w, self.grid_res_h]])
                     self.rH = cv.getPerspectiveTransform(pts2, pts1)
+                    self.rH_inv = np.linalg.inv(self.rH)
+
 
                     A, B, C, D = pts1
                     self.rL_horizon = self._calculate_horizon(A, B, C, D)
@@ -166,7 +173,7 @@ class ModelField:
                     dst_u_L = self._min_dist_line_point(self.rL_horizon, u_bottom)
                     self.rhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
 
-                    self.s = self._construct_modelfield_img()
+                    self.s, self.s_by_q = self._construct_modelfield_img()
 
                     cv.imwrite("modelfield.png", self.grid)
                     cv.imwrite("modelfield_BBs.png", self.original_img)
@@ -238,6 +245,7 @@ class ModelField:
     
     def _construct_modelfield_img(self):
         s_total = {}
+        s_by_q_total = {}
 
         for row in range(self.sample_inc_h, self.grid_res_h, self.sample_inc_h):
             for col in range(self.sample_inc_w, self.grid_res_w, self.sample_inc_w):
@@ -271,6 +279,7 @@ class ModelField:
                 s = Particle(q, q_img, B, a)
 
                 s_total[q_img] = s
+                s_by_q_total[q] = s
 
                 B.draw(self.original_img)
                 cv.imwrite(f"BBs/{row}_{col}.png", a)
@@ -278,7 +287,65 @@ class ModelField:
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
 
-        return s_total
+        return s_total, s_by_q_total
+
+    def get_nearest_particle(self, q_img):
+        """
+        Description: get the particle that's nearest to the point p
+
+        Input:
+            - p: point (x, y)
+        
+        output:
+            - particle: the nearest particle object or None in case it's out of 
+            the field.
+        """
+        x_img, y_img = q_img
+        particle = None
+
+        # Which half the point exists in to know which H_inv to use
+        H_inv = None
+        # y = ax + b
+        A, B = self.upper_center, self.bottom_center
+        a = (A[1] - B[1])/(A[0] - B[0])
+        b = A[1] - a * A[0]
+        if (y_img - a * x_img - b) < 0:
+            H_inv = self.lH_inv
+        else:
+            H_inv = self.rH_inv
+
+        q = cv.perspectiveTransform(np.array([[q_img]], np.float32), H_inv)
+        q = tuple(q.squeeze())
+        x, y = (int(q[0]), int(q[1]))
+
+        n_x, n_y = round(x / self.sample_inc_w), round(y / self.sample_inc_h)
+        n_x, n_y =  self.sample_inc_w * int(n_x), self.sample_inc_h * int(n_y)
+
+        if (n_x, n_y) in self.s_by_q:
+            particle = self.s_by_q[(n_x, n_y)]
+
+        return particle
+        # get the four corners of the box surrounding the input point
+        # x_tl = x - x % self.sample_inc_w
+        # y_tl = y - y % self.sample_inc_h
+        # x_tr = x_tl + self.sample_inc_w
+        # y_tr = y_tl
+        # x_bl = x_tl
+        # y_bl = y_tl + self.sample_inc_h
+        # x_br = x_tr
+        # y_br = y_bl
+
+        # min_dst = np.inf
+        # corners = [(x_tl, y_tl), (x_tr, y_tr), (x_br, y_br), (x_bl, y_bl)]
+        # print(corners)
+        # for corner in corners:
+        #     dst = self._euclidean_distance(corner, q)
+        #     if min_dst > dst and corner in self.s_by_q:
+        #         min_dst = dst
+        #        particle = self.s_by_q[corner]
+                
+
+        #return particle
 
     def _get_particles(self):
         return self.s

@@ -6,10 +6,15 @@ KERNEL_SIZE = (2, 2)
 MIN_WIDTH_BB = 20
 BB_MARGIN = 2
 
+BACK_SUB_HISTORY = 150
+BACK_SUB_THRE = 16
+BACK_SUB_DETECT_SHADOW = False
+
 BG_THRESHOLD_LOWER = 10
 BG_THRESHOLD_HIGHER = 255
 
-VERTICAL_TH = .15
+VERTICAL_TH = .2
+MIDDLE_TH = .3
 HEAD_VERTICAL_TH = .1
 HORIZONTAL_TH = .2
 IOU_TH = .2
@@ -23,10 +28,10 @@ class BoundingBox:
         self.br = br
 
 
-
 class PlayerDetection:
     def __init__(self, particles, IMG, BGIMG):
-
+        self.backSub = cv.createBackgroundSubtractorMOG2(
+            BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
         self.contours = []
         self.particles = particles
@@ -47,10 +52,16 @@ class PlayerDetection:
 
         self.frame_gpu = cv.cuda_GpuMat()
 
-    def subBG(self, frame):
+    def subBG(self, frame, frameId):
         self.frame = frame
+        # will be removed
         self.setFramesForDisplay()
-        subtract = cv.absdiff(self.frame, self.BGIMG)
+
+        fgMask = self.backSub.apply(frame)
+        if (frameId > 80):
+            return fgMask
+
+        subtract = cv.absdiff(frame, self.BGIMG)
         img_gray = cv.cvtColor(subtract, cv.COLOR_BGR2GRAY)
         _, subtract = cv.threshold(
             img_gray, BG_THRESHOLD_LOWER, BG_THRESHOLD_HIGHER, cv.THRESH_BINARY)
@@ -126,7 +137,7 @@ class PlayerDetection:
         return percentage
 
     def getDecision(self, p1, p2, p3):
-        if(p1 < VERTICAL_TH or p2 < VERTICAL_TH or p3 < VERTICAL_TH):
+        if(p1 < VERTICAL_TH or p2 < MIDDLE_TH or p3 < VERTICAL_TH):
             return False, 0
 
         return True, round((p1+p2+p3)/3, 2)
@@ -243,15 +254,14 @@ class PlayerDetection:
     def getOutputPD(self):
         output_q_img = []
         output_q = []
-        
+
         for (x1, y1, x2, y2) in self.outputPD:
             w = x2 - x1
             x = x1 + w // 2
             y = y2
-            
+
             q = self.particles[(x, y)].q
             q_img = (x, y)
             output_q.append(q)
             output_q_img.append(q_img)
-
         return output_q, output_q_img

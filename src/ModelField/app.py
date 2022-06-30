@@ -9,11 +9,16 @@ img = None
 if __name__=="__main__":
 
   # reading the image
-  cap = cv.VideoCapture("../../data/videos/cuda_output.avi")
+  cap = cv.VideoCapture("output.avi")
   ret, frame = cap.read()
   
-  ModelField(frame)
+  mf_gui_clicks = [ (311, 110), (616, 101), (922, 103), # the three top corners
+                  (1196, 223), (619, 265), (27, 240), # the three bottom corners
+                  (195, 162), (193, 142), # the left post corners
+                  (1035, 152), (1037, 132) ] # the right post corners
 
+  mf = ModelField(frame, 1, clicks=mf_gui_clicks)
+  particle = mf.get_nearest_particle((1200, 500))
+
+  cap.release()
   cv.destroyAllWindows()
-
-
