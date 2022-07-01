@@ -8,7 +8,7 @@ from ModelField.model_field import ModelField
 import cv2 as cv
 import imutils
 import numpy as np
-
+import pickle
 class PlayerTracker:
   # undistortion parameter
   lk1 = 5e-06 
@@ -70,8 +70,9 @@ class PlayerTracker:
     self.mf_enable = mf_enable
     if self.mf_enable:
       MF = ModelField(lmrframe, samples_per_meter, clicks=clicks)
-      particles = MF._get_particles()
-      MF._save_particles()
+      with open('modelField.pkl', 'wb') as f:
+        pickle.dump(MF, f)
+      f.close()
     
     # Player detection
     self.pd_enable = pd_enable

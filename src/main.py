@@ -19,7 +19,7 @@ if __name__ == "__main__":
   
   tracker = PlayerTracker(lcap, mcap, rcap, 
   mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
-  saved_frames_no=100, samples_per_meter=1,
+  saved_frames_no=120, samples_per_meter=3,
   clicks=mf_gui_clicks)
 
   tracker.run()
