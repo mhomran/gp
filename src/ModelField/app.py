@@ -21,8 +21,4 @@ if __name__=="__main__":
   particle = mf.get_nearest_particle((1200, 500))
 
   cap.release()
-<<<<<<< HEAD
   cv.destroyAllWindows()
-=======
-  cv.destroyAllWindows()
->>>>>>> cb416d847fc38312f1670960f1d171e9cd562989
