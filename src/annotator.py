@@ -12,7 +12,8 @@ class GuiState(Enum):
     STATE_GOAL = 2,
 
 class Annotator:
-    def __init__(self, mf, gui_width=1200, remove_th=10) -> None:
+    def __init__(self, mf, gui_width=1200, remove_th=10,
+    skipped_frames=0) -> None:
         self.mf = mf
         self.gui_width = gui_width
         self.q_img = []
@@ -21,6 +22,7 @@ class Annotator:
         self.gui_img = None
         self.frame_id = None
         self.remove_th = remove_th
+        self.skipped_frames = skipped_frames
 
         cv.namedWindow("GUI")
         cv.setMouseCallback('GUI', self._click_event)
@@ -48,7 +50,13 @@ class Annotator:
 
         self.gui_img = imutils.resize(temp_img, width=self.gui_width)
 
-        self._write_hint(str(self.frame_id))
+        msg = str(self.frame_id) + " "
+        if self.frame_id == self.skipped_frames + 1:
+            msg += "[WARNNING]: The upcoming frames will be saved on disk"
+        self._write_hint(msg)
+        
+        msg = str(len(self.q_img))
+        self._write_hint(msg, pt1=(1300, 2), pt2=(1500, 20), color=(0, 0, 255))
 
     def _gui2orig(self, p):
         x = p[0] * self.img.shape[1] // self.gui_img.shape[1]
@@ -59,9 +67,9 @@ class Annotator:
         dst = np.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2))
         return dst
 
-    def _write_hint(self, msg, color=(0, 0, 0)):
-        cv.rectangle(self.gui_img, (10, 2), (300, 20), (255, 255, 255), -1)
-        cv.putText(self.gui_img, msg, (15, 15),
+    def _write_hint(self, msg, color=(0, 0, 0), pt1=(10, 2), pt2=(600, 20)):
+        cv.rectangle(self.gui_img, pt1, pt2, (255, 255, 255), -1)
+        cv.putText(self.gui_img, msg, (pt1[0]+5, pt1[1]+13),
                     cv.FONT_HERSHEY_SIMPLEX, 0.5, color)
 
     def _click_event(self, event, x, y, flags=None, params=None):
@@ -87,12 +95,14 @@ def main():
     BGIMG = cv.imread('background.png')
     BGIMG = imutils.resize(BGIMG, 1200)
 
+    skipped_frames = 0
+
     MF = {}
     with open('MF.pkl', 'rb') as f:
         MF = pickle.load(f)
 
     PD = PlayerDetection(MF, IMG, BGIMG)
-    annotator = Annotator(MF, gui_width=1800)
+    annotator = Annotator(MF, gui_width=1800, skipped_frames=skipped_frames)
 
     if not os.path.exists("q_img"):
         os.makedirs("q_img")
@@ -100,6 +110,7 @@ def main():
     while True:
 
         _, frame, frameId = IMG.readFrame()
+        print(frameId)
 
         if frame is None:
             break
@@ -116,7 +127,8 @@ def main():
         q_img = annotator.run(frameId, frame, q_img)
 
         # Save
-        TagWriter.write(f"q_img/{frameId}.csv", q_img)
+        if frameId > skipped_frames:
+            TagWriter.write(f"q_img/{frameId}.csv", q_img)
         
 
 if __name__=="__main__":
