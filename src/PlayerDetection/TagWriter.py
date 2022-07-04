@@ -11,7 +11,7 @@ class TagWriter:
             coords: the coordinates to be written.
         """
 
-        with open(filename, 'w') as csvfile: 
+        with open(filename, 'w', newline="") as csvfile: 
             writer = csv.writer(csvfile)
             for coord in coords:
                 writer.writerow(list(coord)) 

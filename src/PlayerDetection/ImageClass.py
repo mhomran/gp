@@ -9,7 +9,6 @@ class ImageClass:
 
     def readFrame(self):
         ret, frame = self.cap.read()
-        frame = self.resizeImage(frame)
         frameId = int(self.cap.get(1))
         return ret, frame, frameId
 

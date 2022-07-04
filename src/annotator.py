@@ -46,7 +46,7 @@ class Annotator:
 
         for q_img_i in self.q_img:
             x, y = q_img_i
-            cv.circle(temp_img, (x, y), 3, (0,0,255), -1)
+            cv.circle(temp_img, (x, y), 10, (0,0,255), -1)
 
         self.gui_img = imutils.resize(temp_img, width=self.gui_width)
 
@@ -93,12 +93,13 @@ class Annotator:
 def main():
     IMG = ImageClass('two_mins.avi')
     BGIMG = cv.imread('background.png')
-    BGIMG = imutils.resize(BGIMG, 1200)
 
     skipped_frames = 0
+    repeated_frames = 3
+    q_img = None
 
     MF = {}
-    with open('MF.pkl', 'rb') as f:
+    with open('modelField.pkl', 'rb') as f:
         MF = pickle.load(f)
 
     PD = PlayerDetection(MF, IMG, BGIMG)
@@ -110,21 +111,21 @@ def main():
     while True:
 
         _, frame, frameId = IMG.readFrame()
-        print(frameId)
 
         if frame is None:
             break
+        
+        if (frameId-1) % repeated_frames == 0:
+            # Player Detection
+            fgMask = PD.subBG(frame, frameId)
 
-        # Player Detection
-        fgMask = PD.subBG(frame, frameId)
+            PD.preProcessing(fgMask)
+            PD.loopOnBB()
 
-        PD.preProcessing(fgMask)
-        PD.loopOnBB()
+            _, q_img = PD.getOutputPD()
 
-        _, q_img = PD.getOutputPD()
-
-        # Annotate
-        q_img = annotator.run(frameId, frame, q_img)
+            # Annotate
+            q_img = annotator.run(frameId, frame, q_img)
 
         # Save
         if frameId > skipped_frames:
