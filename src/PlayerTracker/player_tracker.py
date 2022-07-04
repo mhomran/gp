@@ -57,7 +57,12 @@ class PlayerTracker:
     lmframe, lmframe_gpu = self.lm_stitcher.stitch(self.lframe_gpu, self.mframe_gpu)
     mrframe, mrframe_gpu = self.mr_stitcher.stitch(self.mframe_gpu, self.rframe_gpu)
     self.lmr_stitcher = Stitcher(lmframe, mrframe, "l")
-    lmrframe, lmrframe_gpu = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
+    lmrframe, _ = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
+    out_h, out_w = lmrframe.shape[:2]
+    out_h = out_h - out_h%2
+    out_w = out_w - out_w%2
+    lmrframe = lmrframe[:out_h, :out_w, :]
+
     
     # background subtractor
     self.bg_enable = bg_enable
@@ -76,7 +81,7 @@ class PlayerTracker:
     
     # Player detection
     self.pd_enable = pd_enable
-    self.frameId = 0
+    self.frameId = 1
     self.save_pd = save_pd
     self.saved_frames_no = saved_frames_no
     self.save_pd_init = False
@@ -95,11 +100,11 @@ class PlayerTracker:
     # Saver
     out_h, out_w = lmrframe.shape[:2]
     self.fps = lcap.get(cv.CAP_PROP_FPS)
-    self.out = cv.VideoWriter('output.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
-    self.out_original = cv.VideoWriter('outputoriginal.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
+    self.out_masked = cv.VideoWriter('masked.avi', cv.VideoWriter_fourcc('H','F','Y','U'), self.fps, (out_w, out_h))
+    self.out_original = cv.VideoWriter('original.avi', cv.VideoWriter_fourcc('H','F','Y','U'), self.fps, (out_w, out_h))
   
   def __del__(self):
-    self.out.release()
+    self.out_masked.release()
     self.out_original.release()
 
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
@@ -180,6 +185,10 @@ class PlayerTracker:
       _, lmframe_gpu = self.lm_stitcher.stitch(self.lframe_gpu, self.mframe_gpu)
       _, mrframe_gpu = self.mr_stitcher.stitch(self.mframe_gpu, self.rframe_gpu)
       lmrframe, _  = self.lmr_stitcher.stitch(lmframe_gpu, mrframe_gpu)
+      out_h, out_w = lmrframe.shape[:2]
+      out_h = out_h - out_h%2
+      out_w = out_w - out_w%2
+      lmrframe = lmrframe[:out_h, :out_w, :]
 
       # 5- Player Detection
       if self.bg_enable:
@@ -195,12 +204,12 @@ class PlayerTracker:
         self.PD.preProcessing(fgMask)
         self.PD.loopOnBB()
         
-        lmrframe_original  = lmrframe.copy()
-        lmrframe[fgMask==0] = np.zeros(3)
-        self.IMG.showImage(lmrframe_original,'original')
+        lmrframe_masked  = lmrframe.copy()
+        lmrframe_masked[fgMask==0] = np.zeros(3)
+        self.IMG.showImage(lmrframe, 'original')
 
         self.IMG.writeTxt(lmrframe, self.frameId)
-        self.IMG.showImage(lmrframe, "Frame")
+        self.IMG.showImage(lmrframe_masked, "out_masked")
         keyboard = cv.waitKey(1)
         if keyboard == 'q' or keyboard == 27:
           break
@@ -209,25 +218,24 @@ class PlayerTracker:
       self._calculate_performance()
 
       # 7- Save
-      if self.save_pd and self.pd_enable:
-        if not self.save_pd_init:
-          exists = os.path.exists("q")
-          if not exists:
-            os.makedirs("q")
-          exists = os.path.exists("q_img")
-          if not exists:
-            os.makedirs("q_img")
-          self.save_pd_init = True
-        else:
-          if self.frameId < self.saved_frames_no:
-            # save frame
-            self.out.write(lmrframe)
-            self.out_original.write(lmrframe_original)
-            if self.pd_enable:
-              # save tags
-              q, q_img = self.PD.getOutputPD()
-              TagWriter.write(f"q/{self.frameId}.csv", q)
-              TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
+      if self.frameId < self.saved_frames_no:
+        self.out_original.write(lmrframe)
+
+        if self.save_pd and self.pd_enable:
+          if not self.save_pd_init:
+            exists = os.path.exists("q")
+            if not exists:
+              os.makedirs("q")
+            exists = os.path.exists("q_img")
+            if not exists:
+              os.makedirs("q_img")
+            self.save_pd_init = True
+          
+          self.out_masked.write(lmrframe_masked)
+          # save tags
+          q, q_img = self.PD.getOutputPD()
+          TagWriter.write(f"q/{self.frameId}.csv", q)
+          TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
 
       print(f"frame #{self.frameId}")
       self.frameId += 1
