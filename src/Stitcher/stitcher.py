@@ -7,6 +7,20 @@ class Stitcher:
   MIN_MATCH_COUNT = 10
 
   def __init__(self, lframe, rframe, ref):
+    """
+    Description: a stitcher that's built on the pinhole camera model.
+
+    Input:
+      - lframe: the left undistorted image.
+      - rframe: the right undistorted image.
+      - ref: a flag to determine which image is the source and which is
+      the destination.
+
+    Output:
+      - A stitcher object that can be used with any two images 
+      coming from the same camera position used to capture lframe, rframe.
+    """
+
     self.ref = ref
     self.h = None # Homography Matrix
     self.out_shape = None # stitched image size
@@ -21,10 +35,31 @@ class Stitcher:
     self._calculate_maps()
 
   def _calculate_maps(self):
+    """
+    Description: create a remapping map to avoid applying the perspective 
+    transform for every frame. The images can be stitched just by remapping.
+
+    Input:
+      - h: homography matrix
+
+    Output:
+      - mapx, mapy
+    """
+
     trans_m = np.array([[1, 0, self.trans_dist[0]], [0, 1, self.trans_dist[1]], [0, 0, 1]])
     self.mapx, self.mapy = cv.cuda.buildWarpPerspectiveMaps(trans_m.dot(self.h), False, self.out_shape)
 
   def _calculate_output_size(self):
+    """
+    Description: Calculate the warpped output image size.
+
+    Input:
+      - Two images dimensions
+
+    Output:
+      - The output size
+    """
+
     l_height, l_width = self.lframe_shape[:2]
     r_height, r_width = self.rframe_shape[:2]
 
@@ -44,6 +79,18 @@ class Stitcher:
     self.out_shape = (x_max-x_min, y_max-y_min)
 
   def _warpImages(self, lframe_gpu, rframe_gpu):
+    """
+    Description: Warp an image (source) to the other image (destination)
+    using a precalculated homography matrix h.
+
+    Input:
+      -lframe_gpu: first image on the gpu
+      -rframe_gpu: second image on the gpu
+
+    output:
+      warped image on CPU and GPU
+    """
+
     l_height, l_width = self.lframe_shape[:2]
     r_height, r_width = self.rframe_shape[:2]
 
@@ -66,6 +113,18 @@ class Stitcher:
     return output_img, output_img_gpu
 
   def _construct_homography(self, lframe, rframe):
+    """
+    Description: Build the stitching homography matrix
+    for the two images lframe, rframe. Anyone can the source and the other
+    will be the destination depending on the reference self.ref.
+
+    Input:
+      - lframe
+      - rframe
+
+    output:
+      - homography matrix h
+    """
     # Initiate SIFT detector
     sift = cv.SIFT_create()
 
@@ -73,20 +132,20 @@ class Stitcher:
     lframe_kp, lframe_desc = sift.detectAndCompute(lframe, None)
     rframe_kp, rframe_desc = sift.detectAndCompute(rframe, None)
 
-    # BFMatcher with default params
-    bf = cv.BFMatcher()
-    matches = bf.knnMatch(lframe_desc, rframe_desc, k=2)
+    # Use a brute force matcher to find the KNN with k=2
+    brute_force_matcher = cv.BFMatcher()
+    matched_points = brute_force_matcher.knnMatch(lframe_desc, rframe_desc, k=2)
 
-    # Apply ratio test
-    good = []
-    for m,n in matches:
-      if m.distance < 0.75*n.distance:
-        good.append(m)
+    # Apply D.Lowe ratio test for SIFT
+    sift_good_point = []
+    for first_closest, second_closest in matched_points:
+      if first_closest.distance < 0.75*second_closest.distance:
+        sift_good_point.append(first_closest)
 
-    if len(good) > Stitcher.MIN_MATCH_COUNT:
+    if len(sift_good_point) > Stitcher.MIN_MATCH_COUNT:
       # Convert keypoints to an argument for findHomography
-      lframe_kp = np.float32([lframe_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-      rframe_kp = np.float32([rframe_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+      lframe_kp = np.float32([lframe_kp[m.queryIdx].pt for m in sift_good_point]).reshape(-1,1,2)
+      rframe_kp = np.float32([rframe_kp[m.trainIdx].pt for m in sift_good_point]).reshape(-1,1,2)
 
       src_pts = rframe_kp if self.ref == 'l' else lframe_kp
       dst_pts = lframe_kp if self.ref == 'l' else rframe_kp
