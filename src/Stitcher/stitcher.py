@@ -125,10 +125,9 @@ class Stitcher:
     output:
       - homography matrix h
     """
-    # Initiate SIFT detector
     sift = cv.SIFT_create()
 
-    # find the keypoints and descriptors with SIFT
+    # get the keypoints and descriptors with SIFT
     lframe_kp, lframe_desc = sift.detectAndCompute(lframe, None)
     rframe_kp, rframe_desc = sift.detectAndCompute(rframe, None)
 
@@ -137,20 +136,27 @@ class Stitcher:
     matched_points = brute_force_matcher.knnMatch(lframe_desc, rframe_desc, k=2)
 
     # Apply D.Lowe ratio test for SIFT
-    sift_good_point = []
+    sift_good_points = []
     for first_closest, second_closest in matched_points:
       if first_closest.distance < 0.75*second_closest.distance:
-        sift_good_point.append(first_closest)
+        sift_good_points.append(first_closest)
 
-    if len(sift_good_point) > Stitcher.MIN_MATCH_COUNT:
-      # Convert keypoints to an argument for findHomography
-      lframe_kp = np.float32([lframe_kp[m.queryIdx].pt for m in sift_good_point]).reshape(-1,1,2)
-      rframe_kp = np.float32([rframe_kp[m.trainIdx].pt for m in sift_good_point]).reshape(-1,1,2)
+    if len(sift_good_points) > Stitcher.MIN_MATCH_COUNT:
 
+      # get the good keypoints from both source and destination
+      good_lframe_kp = []
+      good_rframe_kp = []
+      for good_point in sift_good_points:
+        good_lframe_kp.append(lframe_kp[good_point.queryIdx].pt)
+        good_rframe_kp.append(rframe_kp[good_point.trainIdx].pt)
+
+      # determine which is the source and the destination
       src_pts = rframe_kp if self.ref == 'l' else lframe_kp
       dst_pts = lframe_kp if self.ref == 'l' else rframe_kp
       
-      # Establish a homography
+      # Reshape the keypoints to pass it to the homgoraphy calculator
+      lframe_kp = np.float32(good_lframe_kp).reshape(-1, 1, 2)
+      rframe_kp = np.float32(good_rframe_kp).reshape(-1, 1, 2)
       self.h, _ = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     else:
       raise "[Stitcher]: not enough matching points"
