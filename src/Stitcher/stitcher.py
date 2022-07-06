@@ -150,13 +150,15 @@ class Stitcher:
         good_lframe_kp.append(lframe_kp[good_point.queryIdx].pt)
         good_rframe_kp.append(rframe_kp[good_point.trainIdx].pt)
 
-      # determine which is the source and the destination
-      src_pts = rframe_kp if self.ref == 'l' else lframe_kp
-      dst_pts = lframe_kp if self.ref == 'l' else rframe_kp
-      
       # Reshape the keypoints to pass it to the homgoraphy calculator
       lframe_kp = np.float32(good_lframe_kp).reshape(-1, 1, 2)
       rframe_kp = np.float32(good_rframe_kp).reshape(-1, 1, 2)
+      
+      # determine which is the source and the destination from the right and left
+      src_pts = rframe_kp if self.ref == 'l' else lframe_kp
+      dst_pts = lframe_kp if self.ref == 'l' else rframe_kp
+      
+      # calculate homography matrix
       self.h, _ = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     else:
       raise "[Stitcher]: not enough matching points"
