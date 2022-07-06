@@ -69,6 +69,16 @@ class ModelField:
         self.gui_state = GuiState.STATE_CORNERS
         self.done = False
 
+        # videos for the construction
+        fps = 70
+        self.q_img_vid = cv.VideoWriter('q_img_vid.avi', 
+        cv.VideoWriter_fourcc('M','J','P','G'), fps, 
+        (self.gui_img.shape[1], self.gui_img.shape[0]))
+        self.q_vid = cv.VideoWriter('q_vid.avi', 
+        cv.VideoWriter_fourcc('M','J','P','G'), fps, 
+        (self.grid_res_w, self.grid_res_h))
+  
+
         if not clicks:
             self._write_hint("choose the upper left corner")
 
@@ -285,6 +295,11 @@ class ModelField:
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)
 
+                self.q_vid.write(self.grid)
+                w, h = self.gui_img.shape[1], self.gui_img.shape[0]
+                temp = cv.resize(self.original_img, (w, h))
+                self.q_img_vid.write(temp)
+
         return s_total, s_by_q_total
 
     def get_nearest_particle(self, q_img):
@@ -322,26 +337,6 @@ class ModelField:
             particle = self.s_by_q[(n_x, n_y)]
 
         return particle
-        # get the four corners of the box surrounding the input point
-        # x_tl = x - x % self.sample_inc_w
-        # y_tl = y - y % self.sample_inc_h
-        # x_tr = x_tl + self.sample_inc_w
-        # y_tr = y_tl
-        # x_bl = x_tl
-        # y_bl = y_tl + self.sample_inc_h
-        # x_br = x_tr
-        # y_br = y_bl
-
-        # min_dst = np.inf
-        # corners = [(x_tl, y_tl), (x_tr, y_tr), (x_br, y_br), (x_bl, y_bl)]
-        # print(corners)
-        # for corner in corners:
-        #     dst = self._euclidean_distance(corner, q)
-        #     if min_dst > dst and corner in self.s_by_q:
-        #         min_dst = dst
-        #        particle = self.s_by_q[corner]
-
-        # return particle
 
     def _get_particles(self):
         return self.s
@@ -350,3 +345,7 @@ class ModelField:
         with open('particles.pkl', 'wb') as f:
             pickle.dump(self.s, f)
             f.close()
+
+    def __del__(self):
+        if self.q_vid: self.q_vid.release()
+        if self.q_img_vid: self.q_img_vid.release()
