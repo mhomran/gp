@@ -91,22 +91,23 @@ class Annotator:
             self._draw_q_img()
 
 def main():
-    IMG = ImageClass('two_mins.avi')
-    BGIMG = cv.imread('background.png')
+    base_path = "/home/mhomran/Downloads/ground_truth/progression"
+    IMG = ImageClass(f'{base_path}/original.avi')
+    BGIMG = cv.imread(f'{base_path}/../Common/background.png')
 
     skipped_frames = 0
     repeated_frames = 3
     q_img = None
 
     MF = {}
-    with open('modelField.pkl', 'rb') as f:
+    with open(f'{base_path}/../Common/modelField.pkl', 'rb') as f:
         MF = pickle.load(f)
 
     PD = PlayerDetection(MF, IMG, BGIMG)
     annotator = Annotator(MF, gui_width=1800, skipped_frames=skipped_frames)
 
-    if not os.path.exists("q_img"):
-        os.makedirs("q_img")
+    if not os.path.exists(f"{base_path}/q_img_gt"):
+        os.makedirs(f"{base_path}/q_img_gt")
 
     while True:
 
@@ -129,7 +130,7 @@ def main():
 
         # Save
         if frameId > skipped_frames:
-            TagWriter.write(f"q_img/{frameId}.csv", q_img)
+            TagWriter.write(f"{base_path}/q_img_gt/{frameId}.csv", q_img)
         
 
 if __name__=="__main__":
