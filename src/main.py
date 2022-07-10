@@ -1,16 +1,18 @@
+import sys
 import cv2 as cv
 import numpy as np
-import time
 from PlayerTracker.player_tracker import PlayerTracker
 
-start_time = time.time()
 if __name__ == "__main__":
 
   np.seterr(divide='ignore', invalid='ignore')
+  
+  if len(sys.argv) != 4: sys.exit(-1)
 
-  lcap = cv.VideoCapture('../data/videos/pyrVSmas/L.mp4')
-  mcap = cv.VideoCapture('../data/videos/pyrVSmas/C.mp4')
-  rcap = cv.VideoCapture('../data/videos/pyrVSmas/R.mp4')
+  _, lcap_fn, mcap_fn, rcap_fn = sys.argv
+  lcap = cv.VideoCapture(lcap_fn)
+  mcap = cv.VideoCapture(mcap_fn)
+  rcap = cv.VideoCapture(rcap_fn)
 
   mf_gui_clicks = [ (311, 110), (616, 101), (922, 103), # the three top corners
                     (1196, 223), (619, 265), (27, 240), # the three bottom corners
