@@ -231,7 +231,7 @@ class PlayerDetection:
                 particles.append(particle)
 
         self.outputPD = self.nonMax(particles)
-        self.displayIMGs()
+        # self.displayIMGs()
     
 
     def displayIMGs(self):

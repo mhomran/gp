@@ -52,7 +52,7 @@ class ModelField:
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
 
         # modelfield image (Top view)
-        self.grid = cv.imread("../data/imgs/pitch/h.png")
+        self.grid = cv.imread("h.png")
         self.grid_res_w = self.grid.shape[1]
         self.px_per_m_w = self.grid_res_w // SOCCER_WIDTH_M
         self.sample_inc_w = int(self.px_per_m_w // samples_per_meter)

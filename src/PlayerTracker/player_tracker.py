@@ -5,6 +5,7 @@ from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import ModelField
+from MultiObjectTracking.object_tracking import PlayerTracking
 import cv2 as cv
 import imutils
 import numpy as np
@@ -63,7 +64,6 @@ class PlayerTracker:
     out_w = out_w - out_w%2
     lmrframe = lmrframe[:out_h, :out_w, :]
 
-    
     # background subtractor
     self.bg_enable = bg_enable
     if self.bg_enable:
@@ -75,9 +75,7 @@ class PlayerTracker:
     self.mf_enable = mf_enable
     if self.mf_enable:
       MF = ModelField(lmrframe, samples_per_meter, clicks=clicks)
-      with open('modelField.pkl', 'wb') as f:
-        pickle.dump(MF, f)
-      f.close()
+
     
     # Player detection
     self.pd_enable = pd_enable
@@ -90,7 +88,8 @@ class PlayerTracker:
       bg_img = cv.imread('./background.png')
       self.IMG = ImageClass()
       self.PD = PlayerDetection(MF, self.IMG, bg_img)
-
+    # tracker 
+    self.player_tracker = PlayerTracking(MF)
     # performance
     self.frame_count = 0
     self.start_time = 0
@@ -100,12 +99,12 @@ class PlayerTracker:
     # Saver
     out_h, out_w = lmrframe.shape[:2]
     self.fps = lcap.get(cv.CAP_PROP_FPS)
-    self.out_masked = cv.VideoWriter('masked.avi', cv.VideoWriter_fourcc('H','F','Y','U'), self.fps, (out_w, out_h))
-    self.out_original = cv.VideoWriter('original.avi', cv.VideoWriter_fourcc('H','F','Y','U'), self.fps, (out_w, out_h))
+    self.out_masked = cv.VideoWriter('masked.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
+    self.out_original = cv.VideoWriter('original.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
   
   def __del__(self):
-    self.out_masked.release()
-    self.out_original.release()
+    if self.out_masked: self.out_masked.release()
+    if self.out_original: self.out_original.release()
 
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
     self.lframe_gpu.upload(lframe)
@@ -154,7 +153,6 @@ class PlayerTracker:
       self.prev_second = curr_second
       duration = int(self.end_time - self.start_time)
       print(f"Second #{curr_second}")
-    # print(f"One second is processed in: {duration} s")
 
   def _print_images(self):
     lframe, mframe, rframe = self._download_images_from_GPU()
@@ -206,18 +204,19 @@ class PlayerTracker:
         
         lmrframe_masked  = lmrframe.copy()
         lmrframe_masked[fgMask==0] = np.zeros(3)
-        self.IMG.showImage(lmrframe, 'original')
+        
 
         self.IMG.writeTxt(lmrframe, self.frameId)
-        self.IMG.showImage(lmrframe_masked, "out_masked")
         keyboard = cv.waitKey(1)
         if keyboard == 'q' or keyboard == 27:
           break
-
-      # 6- Calculate performance for the whole pipeline
+      # 6- player tracking
+      q, q_img = self.PD.getOutputPD()
+      self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
+      # 7- Calculate performance for the whole pipeline
       self._calculate_performance()
 
-      # 7- Save
+      # 8- Save
       if self.frameId < self.saved_frames_no:
         self.out_original.write(lmrframe)
 
