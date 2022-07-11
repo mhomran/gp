@@ -1,8 +1,10 @@
 # Import python libraries
+from tempfile import tempdir
 import cv2, imutils
-from cv2 import waitKey
+import cv2 as cv
 import copy
 # from detectors import Detectors
+import numpy as np 
 from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
 
@@ -19,20 +21,87 @@ class PlayerTracking(object):
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
         self.frameId = 1
+        self.clicks = []
         self.track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
                     (0, 255, 255), (255, 0, 255), (255, 127, 255),
                     (127, 0, 255), (127, 0, 127)]
         self.team_colors = [(255,255,255),(0,0,255),(0,255,255)]
 
-    def _gui2orig(self, p,frame):
-        x = int(p[0] * self.field_image_orginal.shape[1] // frame.shape[1])
-        y = int(p[1] * self.field_image_orginal.shape[0] // frame.shape[0])
+    def _gui2orig(self, p):
+        x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
+        y = p[1] * self.original_frame.shape[0] // self.gui_img.shape[0]
         return (x, y)
+    def _write_hint(self,img, msg, color=(0, 0, 0)):
+        cv.rectangle(img, (10, 2), (300, 20), (255, 255, 255), -1)
+        cv.putText(img, msg, (15, 15),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.5, color)  
+    def switchPlayers(self,original_frame):
+        
+        self.done = False
+        self._write_hint(original_frame,"choose two players too correct")
+        self.gui_img = original_frame.copy()
+        self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
+        cv.namedWindow("GUI")
+        cv.setMouseCallback('GUI', self.clickEvent)
+        while True:
+            cv.imshow('GUI', self.gui_img)
+            if self.done:
+                cv.waitKey(500)
+                cv.destroyAllWindows()
+                break
+            cv.waitKey(1)
+        
+    def clickEvent(self, event, x, y, flags=None, params=None):
+        # checking for left mouse clicks
+        if event != cv.EVENT_LBUTTONDOWN : return 
+        self.clicks.append(self._gui2orig((x, y)))
+        if len(self.clicks)==2:
+            track1_id = self.closest_track(self.clicks[0])
+            track2_id = self.closest_track(self.clicks[1])
+            self.clicks = []
+            if track1_id  and track2_id:
+                self.swap_tracks(track1_id,track2_id)
+            self.done = True
+            
+    def swap_tracks(self,track1_id,track2_id):
+        # swap ids
+        self.tracker.tracks[track1_id].track_id = track2_id
+        self.tracker.tracks[track2_id].track_id = track1_id
+        
+        # swap teams
+        temp =  self.tracker.tracks[track1_id].team 
+        self.tracker.tracks[track1_id].team = self.tracker.tracks[track2_id].team
+        self.tracker.tracks[track2_id].team = temp
+
+        #swap places in array
+        temp = self.tracker.tracks[track2_id]
+        self.tracker.tracks[track2_id] = self.tracker.tracks[track1_id]  
+        self.tracker.tracks[track1_id] = temp
+        
+  
+    def closest_track(self,click):
+        min_dist = 1000
+        selected_track =  None
+        click = np.array([[click[0]],[click[1]]])
+        
+        for track in self.tracker.tracks:
+            current_dist = self._euclidean_dist(click,track.trace[-1])
+            if min_dist > current_dist:
+                min_dist = current_dist
+                selected_track = track.track_id
+        return selected_track        
+                
+    def _euclidean_dist(self, p1, p2):
+        diff = p1 - p2
+        dist = np.sqrt(diff[0][0]**2+diff[1][0]**2)
+        return dist
+
     def process_step(self,centers,frame,original_frame):
         if (len(centers) == 0):return 
         # Track object using Kalman Filter
         self.tracker.Update(centers, frame,original_frame)
         field_image = copy.deepcopy(self.field_image_orginal)
+       
         # For identified object tracks draw tracking line
         # Use various colors to indicate different track_id
         for i in range(len(self.tracker.tracks)):
@@ -44,9 +113,10 @@ class PlayerTracking(object):
                     x2 = self.tracker.tracks[i].trace[j+1][0][0]
                     y2 = self.tracker.tracks[i].trace[j+1][1][0]
                     clr = self.tracker.tracks[i].track_id % 9
-                    cv2.line(original_frame, (int(x1), int(y1)), (int(x2), int(y2)),
+                    cv.line(original_frame, (int(x1), int(y1)), (int(x2), int(y2)),
                                 self.track_colors[clr], 5)
             _write_hint(original_frame, str(self.tracker.tracks[i].track_id), self.tracker.tracks[i].trace[-1])
+        # small field image
         for i in range(len(self.tracker.tracks)):
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
@@ -57,10 +127,16 @@ class PlayerTracking(object):
                     y2 = self.tracker.tracks[i].trace[j+1][1][0]
                     clr = self.tracker.tracks[i].team % 9
 
-                    cv2.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
-    
-        cv2.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
-        cv2.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
+                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
+        self.original_frame = original_frame
+        cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
+        cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
+
+        if cv.waitKey(10) == 32:
+            cv.destroyAllWindows()
+            self.switchPlayers(original_frame)
+        
+        
 
 
 
@@ -88,15 +164,15 @@ def main():
 
         if debug:
             for i, point in enumerate(centers):
-                cv2.circle(frame_with_detections,(int(point[0]),int(point[1])), 10, (0,0,255), -1)
+                cv.circle(frame_with_detections,(int(point[0]),int(point[1])), 10, (0,0,255), -1)
                 _write_hint(frame_with_detections, str(i), ([int(point[0])],[int(point[1])]))
-            cv2.imshow('Original', imutils.resize(frame_with_detections, width=GUI_WIDTH))
+            cv.imshow('Original', imutils.resize(frame_with_detections, width=GUI_WIDTH))
             
             ckpt = 2100
             if (frameId > ckpt):
-                if cv2.waitKey(0) == 27: exit()
+                if cv.waitKey(0) == 27: exit()
             else:
-                cv2.waitKey(1)
+                cv.waitKey(1)
 
         frameId += 1
 
