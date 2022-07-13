@@ -32,7 +32,7 @@ if __name__ == "__main__":
   end = int((end_m*60+end_s)*fps)
 
   lf = int(lf)
-  
+
   tracker = PlayerTracker(lcap, mcap, rcap, start, end, lf,
   mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
   samples_per_meter=3, clicks=mf_gui_clicks)
