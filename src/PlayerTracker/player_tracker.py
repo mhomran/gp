@@ -213,6 +213,8 @@ class PlayerTracker:
       # 6- player tracking
       q, q_img = self.PD.getOutputPD()
       self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
+      if self.frameId%100 ==0:
+        self.player_tracker.write_data()
       # 7- Calculate performance for the whole pipeline
       self._calculate_performance()
 

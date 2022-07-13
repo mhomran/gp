@@ -25,5 +25,4 @@ if __name__ == "__main__":
   if not input.validate(): sys.exit(ret)
 
   lcap, mcap, rcap = input.get_caps()
-
-  system(f"python3 main.py {lcap} {mcap} {rcap}")
+  system(f"python main.py {lcap} {mcap} {rcap}")

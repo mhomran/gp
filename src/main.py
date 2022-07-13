@@ -7,9 +7,12 @@ if __name__ == "__main__":
 
   np.seterr(divide='ignore', invalid='ignore')
   
-  if len(sys.argv) != 4: sys.exit(-1)
+  # if len(sys.argv) != 4: sys.exit(-1)
+  # _, lcap_fn, mcap_fn, rcap_fn = sys.argv
+  lcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/L.mp4'
+  mcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/C.mp4'
+  rcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/R.mp4'
 
-  _, lcap_fn, mcap_fn, rcap_fn = sys.argv
   lcap = cv.VideoCapture(lcap_fn)
   mcap = cv.VideoCapture(mcap_fn)
   rcap = cv.VideoCapture(rcap_fn)

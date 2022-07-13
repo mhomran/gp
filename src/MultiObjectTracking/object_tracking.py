@@ -3,6 +3,7 @@ from tempfile import tempdir
 import cv2, imutils
 import cv2 as cv
 import copy
+import csv
 # from detectors import Detectors
 import numpy as np 
 from MultiObjectTracking.helper import _write_hint
@@ -20,6 +21,7 @@ class PlayerTracking(object):
         self.tracker = Tracker(MF)
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
+        self.paths = [[]]*23
         self.frameId = 1
         self.clicks = []
         self.track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
@@ -105,6 +107,7 @@ class PlayerTracking(object):
         # For identified object tracks draw tracking line
         # Use various colors to indicate different track_id
         for i in range(len(self.tracker.tracks)):
+            self.paths[i].append(self.tracker.tracks[i].top_pos)
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
                     # Draw trace line
@@ -115,19 +118,19 @@ class PlayerTracking(object):
                     clr = self.tracker.tracks[i].track_id % 9
                     cv.line(original_frame, (int(x1), int(y1)), (int(x2), int(y2)),
                                 self.track_colors[clr], 5)
+                
             _write_hint(original_frame, str(self.tracker.tracks[i].track_id), self.tracker.tracks[i].trace[-1])
         # small field image
         for i in range(len(self.tracker.tracks)):
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
-                    # Draw trace line
-                    x1 = self.tracker.tracks[i].trace[j][0][0]
-                    y1 = self.tracker.tracks[i].trace[j][1][0]
-                    x2 = self.tracker.tracks[i].trace[j+1][0][0]
-                    y2 = self.tracker.tracks[i].trace[j+1][1][0]
-                    clr = self.tracker.tracks[i].team % 9
-
-                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
+                    clr = self.tracker.tracks[i].team
+                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 75, self.team_colors[clr], -1)
+                    x_offset = 100
+                    if self.tracker.tracks[i].track_id <10:
+                        x_offset = 50
+                    _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
+                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+50]]),font = 4)
         self.original_frame = original_frame
         cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
@@ -136,7 +139,15 @@ class PlayerTracking(object):
             cv.destroyAllWindows()
             self.switchPlayers(original_frame)
         
-        
+    def write_data(self):
+
+        for i,path in enumerate(self.paths):
+            with open(f'countours/{i}player.csv','w') as out:
+                csv_out=csv.writer(out)
+                
+                for row in path:
+                    csv_out.writerow(row)
+
 
 
 
