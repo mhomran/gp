@@ -8,7 +8,7 @@ import csv
 import numpy as np 
 from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
-
+from MultiObjectTracking.tracker import Track
 base_path = "D:/kollea/gradePorject/gp2/kalman_filter_multi_object_tracking/Data/VideoWithTags"
 base_path = "D:/kollea/gradePorject/last_version_gp/src/2,3part/progression"
 # base_path = "E:/0Senior/0_GP/detection_data1" 
@@ -19,6 +19,7 @@ GUI_WIDTH = 1500
 class PlayerTracking(object):
     def __init__(self,MF):
         self.tracker = Tracker(MF)
+        self.MF = MF
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
         self.paths = [[]]*23
@@ -40,7 +41,8 @@ class PlayerTracking(object):
     def switchPlayers(self,original_frame):
         
         self.done = False
-        self._write_hint(original_frame,"choose two players too correct")
+        self.state = 'swtich'
+        self._write_hint(original_frame,"choose two players to correct")
         self.gui_img = original_frame.copy()
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
         cv.namedWindow("GUI")
@@ -52,12 +54,47 @@ class PlayerTracking(object):
                 cv.destroyAllWindows()
                 break
             cv.waitKey(1)
+    def correctTrack(self,original_frame):
         
+        self.done = False
+        self.state = 'repostion'
+        self._write_hint(original_frame,"choose a player and a point to correct")
+        self.gui_img = original_frame.copy()
+        self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
+        cv.namedWindow("GUI")
+        cv.setMouseCallback('GUI', self.clickEvent)
+        while True:
+            cv.imshow('GUI', self.gui_img)
+            if self.done:
+                cv.waitKey(500)
+                cv.destroyAllWindows()
+                break
+            cv.waitKey(1)
+    
+    def repostionPlayer(self,track_id,new_point):
+        particle = self.MF.get_nearest_particle((new_point[0],new_point[1]))
+        x,y = particle.q_img
+        top_pos = particle.q
+        point = [[x],[y]]
+        track_bb = self._get_BB_as_img(point,self.clean_original_frame)
+        self.tracker.tracks[track_id] = Track(point,track_id,track_bb,self.tracker.tracks[track_id].team,top_pos)
+
     def clickEvent(self, event, x, y, flags=None, params=None):
         # checking for left mouse clicks
         if event != cv.EVENT_LBUTTONDOWN : return 
         self.clicks.append(self._gui2orig((x, y)))
-        if len(self.clicks)==2:
+
+        # if 2 click and repostion
+        if len(self.clicks)==2 and self.state == 'repostion':
+            track1_id = self.closest_track(self.clicks[0])
+            self.clicks = []
+            if track1_id:
+                self.recounstrw
+                
+            self.done = True
+
+        # if two clicks ana swtich
+        if len(self.clicks)==2 and self.state == 'swtich':
             track1_id = self.closest_track(self.clicks[0])
             track2_id = self.closest_track(self.clicks[1])
             self.clicks = []
@@ -103,7 +140,7 @@ class PlayerTracking(object):
         # Track object using Kalman Filter
         self.tracker.Update(centers, frame,original_frame)
         field_image = copy.deepcopy(self.field_image_orginal)
-       
+        self.clean_original_frame = copy.deepcopy(original_frame)
         # For identified object tracks draw tracking line
         # Use various colors to indicate different track_id
         for i in range(len(self.tracker.tracks)):
@@ -135,10 +172,13 @@ class PlayerTracking(object):
         cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
 
-        if cv.waitKey(10) == 32:
+        if cv.waitKey(10) == ord('c'):
             cv.destroyAllWindows()
             self.switchPlayers(original_frame)
-        
+        if cv.waitKey(10) == ord('x'):
+            cv.destroyAllWindows()
+            self.correctTrack(original_frame)
+
     def write_data(self):
 
         for i,path in enumerate(self.paths):
