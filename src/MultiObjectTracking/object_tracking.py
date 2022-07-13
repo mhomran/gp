@@ -57,7 +57,7 @@ class PlayerTracking(object):
                     y2 = self.tracker.tracks[i].trace[j+1][1][0]
                     clr = self.tracker.tracks[i].team % 9
 
-                    cv2.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
+                    cv2.circle(field_image,self.tracker.tracks[i].top_pos, 5, self.team_colors[clr], -1)
     
         cv2.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         cv2.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))

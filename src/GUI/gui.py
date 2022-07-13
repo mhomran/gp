@@ -1,4 +1,4 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtGui import QFont
 
@@ -11,54 +11,23 @@ class PlayerTrackerWin(QMainWindow):
     height = 450
 
     self.setGeometry(xpos, ypos, width, height)
-    self.setWindowTitle("Trackista")
 
+    uic.loadUi("GUI/design.ui", self)
     self.init_ui()
+    self.setWindowTitle("Trackista")
 
     self.input = input
 
   def init_ui(self):
-    self.Title = QtWidgets.QLabel(self)
-    self.Title.setText("Please enter the camera feed")
-    self.Title.move(50, 20)
-    custom_font = QFont()
-    custom_font.setWeight(80)
-    custom_font.setPixelSize(30)
-    QApplication.setFont(custom_font, "QLabel")
-    self.Title.setFont(custom_font)
-    self.Title.adjustSize()
-  
-    self.pick_left = QtWidgets.QPushButton(self)
-    self.pick_left.setText("browse to the left feed")
-    self.pick_left.clicked.connect(self.pick_left_event)
-    custom_font.setPixelSize(15)
-    self.pick_left.setFont(custom_font)
-    self.pick_left.move(50, 100)
-    self.pick_left.adjustSize()
+    self.pick_left_btn = self.findChild(QtWidgets.QPushButton, "pick_left_btn")
+    self.pick_mid_btn = self.findChild(QtWidgets.QPushButton, "pick_mid_btn")
+    self.pick_right_btn = self.findChild(QtWidgets.QPushButton, "pick_right_btn")
+    self.run_btn = self.findChild(QtWidgets.QPushButton, "run_btn")
 
-    self.pick_mid = QtWidgets.QPushButton(self)
-    self.pick_mid.setText("browse to the mid feed")
-    self.pick_mid.clicked.connect(self.pick_mid_event)
-    custom_font.setPixelSize(15)
-    self.pick_mid.setFont(custom_font)
-    self.pick_mid.move(50, 150)
-    self.pick_mid.adjustSize()
-
-    self.pick_right = QtWidgets.QPushButton(self)
-    self.pick_right.setText("browse to the right feed")
-    self.pick_right.clicked.connect(self.pick_right_event)
-    custom_font.setPixelSize(15)
-    self.pick_right.setFont(custom_font)
-    self.pick_right.move(50, 200)
-    self.pick_right.adjustSize()
-
-    self.run_btn = QtWidgets.QPushButton(self)
-    self.run_btn.setText("start")
+    self.pick_left_btn.clicked.connect(self.pick_left_event)
+    self.pick_mid_btn.clicked.connect(self.pick_mid_event)
+    self.pick_right_btn.clicked.connect(self.pick_right_event)
     self.run_btn.clicked.connect(self.run_app)
-    custom_font.setPixelSize(15)
-    self.run_btn.setFont(custom_font)
-    self.run_btn.move(50, 300)
-    self.run_btn.adjustSize()
 
   def pick_left_event(self):
     options = QtWidgets.QFileDialog.Options()
