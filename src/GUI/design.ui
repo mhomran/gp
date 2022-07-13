@@ -76,35 +76,35 @@
    <widget class="QTextEdit" name="start_txt">
     <property name="geometry">
      <rect>
-      <x>220</x>
+      <x>150</x>
       <y>300</y>
       <width>81</width>
       <height>31</height>
      </rect>
     </property>
     <property name="placeholderText">
-     <string/>
+     <string>e.g. 3:05</string>
     </property>
    </widget>
    <widget class="QTextEdit" name="end_txt">
     <property name="geometry">
      <rect>
-      <x>490</x>
+      <x>360</x>
       <y>300</y>
       <width>81</width>
       <height>31</height>
      </rect>
     </property>
     <property name="placeholderText">
-     <string/>
+     <string>e.g. 5:15</string>
     </property>
    </widget>
    <widget class="QLabel" name="start_lbl">
     <property name="geometry">
      <rect>
-      <x>130</x>
-      <y>300</y>
-      <width>80</width>
+      <x>90</x>
+      <y>305</y>
+      <width>41</width>
       <height>21</height>
      </rect>
     </property>
@@ -115,9 +115,9 @@
    <widget class="QLabel" name="end_lbl">
     <property name="geometry">
      <rect>
-      <x>420</x>
-      <y>300</y>
-      <width>80</width>
+      <x>300</x>
+      <y>305</y>
+      <width>41</width>
       <height>21</height>
      </rect>
     </property>
@@ -136,6 +136,19 @@
     </property>
     <property name="text">
      <string>start</string>
+    </property>
+   </widget>
+   <widget class="QTextEdit" name="learning_frames_txt">
+    <property name="geometry">
+     <rect>
+      <x>540</x>
+      <y>300</y>
+      <width>141</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="placeholderText">
+     <string>learning frames</string>
     </property>
    </widget>
   </widget>
