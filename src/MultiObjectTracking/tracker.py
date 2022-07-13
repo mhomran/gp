@@ -370,7 +370,7 @@ class Tracker(object):
 
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
-        debug = True
+        debug = False
         if debug:
             for click in CLICKS:
                 

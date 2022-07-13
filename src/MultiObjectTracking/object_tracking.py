@@ -162,12 +162,12 @@ class PlayerTracking(object):
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
                     clr = self.tracker.tracks[i].team
-                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 75, self.team_colors[clr], -1)
-                    x_offset = 100
+                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 10, self.team_colors[clr], -1)
+                    x_offset = 10
                     if self.tracker.tracks[i].track_id <10:
-                        x_offset = 50
+                        x_offset = 5
                     _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
-                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+50]]),font = 4)
+                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 1)
         self.original_frame = original_frame
         cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))

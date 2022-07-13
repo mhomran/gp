@@ -1,4 +1,6 @@
 import os
+
+from cv2 import CAP_PROP_POS_FRAMES
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
 from PlayerDetection.TagWriter import TagWriter
@@ -10,6 +12,7 @@ import cv2 as cv
 import imutils
 import numpy as np
 import pickle
+
 class PlayerTracker:
   # undistortion parameter
   lk1 = 5e-06 
@@ -20,10 +23,17 @@ class PlayerTracker:
 
   GUI_WIDTH = 1200
 
-  def __init__(self, lcap, mcap, rcap, 
+  def __init__(self, lcap, mcap, rcap, start, end, learning_frames,
   bg_enable=False, mf_enable=True, pd_enable=True, save_pd=False, 
-  saved_frames_no=1200, samples_per_meter=3, pd_frame_no=300, clicks=None,
+  samples_per_meter=3, pd_frame_no=300, clicks=None,
   bg_history=500, bg_th=16, bg_limit=1000):
+
+    duration = lcap.get(cv.CAP_PROP_FRAME_COUNT)
+    if start >= duration or end >= duration:
+      raise ValueError("[FATAL] the start or end is longer than the videos durations.")
+
+    if start <= learning_frames:
+      raise ValueError("[FATAL] the start is not sufficient for GMM learning.")
 
     self.lcap = lcap
     self.mcap = mcap
@@ -64,6 +74,12 @@ class PlayerTracker:
     out_w = out_w - out_w%2
     lmrframe = lmrframe[:out_h, :out_w, :]
 
+    self.saved_frames_no = end - start 
+    self.learning_frames = learning_frames
+    lcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
+    mcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
+    rcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames-2)
+
     # background subtractor
     self.bg_enable = bg_enable
     if self.bg_enable:
@@ -81,7 +97,6 @@ class PlayerTracker:
     self.pd_enable = pd_enable
     self.frameId = 1
     self.save_pd = save_pd
-    self.saved_frames_no = saved_frames_no
     self.save_pd_init = False
     self.pd_frame_no = pd_frame_no
     if self.pd_enable and self.mf_enable:
@@ -103,8 +118,11 @@ class PlayerTracker:
     self.out_original = cv.VideoWriter('original.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
   
   def __del__(self):
-    if self.out_masked: self.out_masked.release()
-    if self.out_original: self.out_original.release()
+    try:
+      if self.out_masked: self.out_masked.release()
+      if self.out_original: self.out_original.release()
+    except:
+      pass
 
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
     self.lframe_gpu.upload(lframe)
@@ -210,33 +228,36 @@ class PlayerTracker:
         keyboard = cv.waitKey(1)
         if keyboard == 'q' or keyboard == 27:
           break
-      # 6- player tracking
-      q, q_img = self.PD.getOutputPD()
-      self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
-      if self.frameId%100 ==0:
-        self.player_tracker.write_data()
-      # 7- Calculate performance for the whole pipeline
-      self._calculate_performance()
 
-      # 8- Save
-      if self.frameId < self.saved_frames_no:
-        self.out_original.write(lmrframe)
+      if self.frameId > self.learning_frames:
+        self.PD.displayIMGs
+        # 6- player tracking
+        q, q_img = self.PD.getOutputPD()
+        self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
+        # 7- Calculate performance for the whole pipeline
+        self._calculate_performance()
 
-        if self.save_pd and self.pd_enable:
-          if not self.save_pd_init:
-            exists = os.path.exists("q")
-            if not exists:
-              os.makedirs("q")
-            exists = os.path.exists("q_img")
-            if not exists:
-              os.makedirs("q_img")
-            self.save_pd_init = True
-          
-          self.out_masked.write(lmrframe_masked)
-          # save tags
-          q, q_img = self.PD.getOutputPD()
-          TagWriter.write(f"q/{self.frameId}.csv", q)
-          TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
+        # 8- Save
+        if self.frameId < self.saved_frames_no:
+          self.out_original.write(lmrframe)
+
+          if self.save_pd and self.pd_enable:
+            if not self.save_pd_init:
+              exists = os.path.exists("q")
+              if not exists:
+                os.makedirs("q")
+              exists = os.path.exists("q_img")
+              if not exists:
+                os.makedirs("q_img")
+              self.save_pd_init = True
+            
+            self.out_masked.write(lmrframe_masked)
+            # save tags
+            q, q_img = self.PD.getOutputPD()
+            TagWriter.write(f"q/{self.frameId}.csv", q)
+            TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
+        else:
+          break
 
       print(f"frame #{self.frameId}")
       self.frameId += 1

@@ -54,8 +54,8 @@ class PlayerDetection:
         self.setFramesForDisplay()
 
         fgMask = self.backSub.apply(frame)
-        if (frameId > 80):
-            return fgMask
+        # if (frameId > 80):
+        return fgMask
 
         subtract = cv.absdiff(frame, self.BGIMG)
         img_gray = cv.cvtColor(subtract, cv.COLOR_BGR2GRAY)
@@ -235,7 +235,7 @@ class PlayerDetection:
     
 
     def displayIMGs(self):
-        self.IMG.showImage(self.contourFrame, "contours")
+        # self.IMG.showImage(self.contourFrame, "contours")
         self.IMG.showImage(self.MFAfter, "MFBB After non max")
         #self.IMG.showImage(self.MFBefore, "MFBB before non max")
         #self.IMG.showImage(self.fgMask, "FGMASK")

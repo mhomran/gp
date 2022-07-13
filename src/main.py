@@ -7,12 +7,9 @@ if __name__ == "__main__":
 
   np.seterr(divide='ignore', invalid='ignore')
   
-  # if len(sys.argv) != 4: sys.exit(-1)
-  # _, lcap_fn, mcap_fn, rcap_fn = sys.argv
-  lcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/L.mp4'
-  mcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/C.mp4'
-  rcap_fn = 'D:/kollea/gradePorject/last_version_object_tracker/refactor/GP_integration/data/videos/pyrVSmas/R.mp4'
+  if len(sys.argv) != 7: sys.exit(-1)
 
+  _, lcap_fn, mcap_fn, rcap_fn, start, end, lf = sys.argv
   lcap = cv.VideoCapture(lcap_fn)
   mcap = cv.VideoCapture(mcap_fn)
   rcap = cv.VideoCapture(rcap_fn)
@@ -22,13 +19,27 @@ if __name__ == "__main__":
                     (195, 162), (193, 142), # the left post corners
                     (1035, 152), (1037, 132) ] # the right post corners
   
-  tracker = PlayerTracker(lcap, mcap, rcap, 
-  mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
-  saved_frames_no=120*25, samples_per_meter=3,
-  clicks=mf_gui_clicks)
+  fps = lcap.get(cv.CAP_PROP_FPS)
 
+  start_m, start_s = start.split(':')
+  start_m = int(start_m)
+  start_s = int(start_s)
+  start = int((start_m*60+start_s)*fps)
+
+  end_m, end_s = end.split(':')
+  end_m = int(end_m)
+  end_s = int(end_s)
+  end = int((end_m*60+end_s)*fps)
+
+  lf = int(lf)
+
+  tracker = PlayerTracker(lcap, mcap, rcap, start, end, lf,
+  mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
+  samples_per_meter=3, clicks=mf_gui_clicks)
+  
   tracker.run()
-    
+
+
   lcap.release()
   rcap.release()
   mcap.release()

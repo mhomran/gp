@@ -1,6 +1,7 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtGui import QFont
+import re
 
 class PlayerTrackerWin(QMainWindow):
   def __init__(self, input) -> None:
@@ -11,54 +12,26 @@ class PlayerTrackerWin(QMainWindow):
     height = 450
 
     self.setGeometry(xpos, ypos, width, height)
-    self.setWindowTitle("Trackista")
 
+    uic.loadUi("GUI/design.ui", self)
     self.init_ui()
+    self.setWindowTitle("Trackista")
 
     self.input = input
 
   def init_ui(self):
-    self.Title = QtWidgets.QLabel(self)
-    self.Title.setText("Please enter the camera feed")
-    self.Title.move(50, 20)
-    custom_font = QFont()
-    custom_font.setWeight(80)
-    custom_font.setPixelSize(30)
-    QApplication.setFont(custom_font, "QLabel")
-    self.Title.setFont(custom_font)
-    self.Title.adjustSize()
-  
-    self.pick_left = QtWidgets.QPushButton(self)
-    self.pick_left.setText("browse to the left feed")
-    self.pick_left.clicked.connect(self.pick_left_event)
-    custom_font.setPixelSize(15)
-    self.pick_left.setFont(custom_font)
-    self.pick_left.move(50, 100)
-    self.pick_left.adjustSize()
+    self.pick_left_btn = self.findChild(QtWidgets.QPushButton, "pick_left_btn")
+    self.pick_mid_btn = self.findChild(QtWidgets.QPushButton, "pick_mid_btn")
+    self.pick_right_btn = self.findChild(QtWidgets.QPushButton, "pick_right_btn")
+    self.run_btn = self.findChild(QtWidgets.QPushButton, "run_btn")
+    self.start_txt = self.findChild(QtWidgets.QTextEdit, "start_txt")
+    self.end_txt = self.findChild(QtWidgets.QTextEdit, "end_txt")
+    self.learning_frames_txt = self.findChild(QtWidgets.QTextEdit, "learning_frames_txt")
 
-    self.pick_mid = QtWidgets.QPushButton(self)
-    self.pick_mid.setText("browse to the mid feed")
-    self.pick_mid.clicked.connect(self.pick_mid_event)
-    custom_font.setPixelSize(15)
-    self.pick_mid.setFont(custom_font)
-    self.pick_mid.move(50, 150)
-    self.pick_mid.adjustSize()
-
-    self.pick_right = QtWidgets.QPushButton(self)
-    self.pick_right.setText("browse to the right feed")
-    self.pick_right.clicked.connect(self.pick_right_event)
-    custom_font.setPixelSize(15)
-    self.pick_right.setFont(custom_font)
-    self.pick_right.move(50, 200)
-    self.pick_right.adjustSize()
-
-    self.run_btn = QtWidgets.QPushButton(self)
-    self.run_btn.setText("start")
+    self.pick_left_btn.clicked.connect(self.pick_left_event)
+    self.pick_mid_btn.clicked.connect(self.pick_mid_event)
+    self.pick_right_btn.clicked.connect(self.pick_right_event)
     self.run_btn.clicked.connect(self.run_app)
-    custom_font.setPixelSize(15)
-    self.run_btn.setFont(custom_font)
-    self.run_btn.move(50, 300)
-    self.run_btn.adjustSize()
 
   def pick_left_event(self):
     options = QtWidgets.QFileDialog.Options()
@@ -90,8 +63,12 @@ class PlayerTrackerWin(QMainWindow):
 
   def run_app(self):
     ret = True
+    txt = None
+    regex = None
+    learning_frames = None
 
     if not self.input.get_lcap():
+      # TODO: alert
       print("please choose the left feed")
       ret = False
 
@@ -102,6 +79,52 @@ class PlayerTrackerWin(QMainWindow):
     if not self.input.get_rcap():
       print("please choose the right feed")
       ret = False
+
+    regex = "^([1-5][0-9]|0?[0-9]):([1-5][0-9]|0?[0-9])$"
+
+    txt = self.start_txt.toPlainText()
+    match = re.search(regex, txt)
+    if not match:
+      print("please enter the start")
+      ret = False
+
+    txt = self.end_txt.toPlainText()
+    match = re.search(regex, txt)
+    if not match:
+      print("please enter the end")
+      ret = False
+
+    learning_frames = self.learning_frames_txt.toPlainText()
+    if not learning_frames:
+      ret = False
+      print("please choose the number of learning frames")
+    else:
+      try:
+        learning_frames = int(learning_frames)
+      except:
+        print("please choose the number of learning frames")
+        ret = False
+    
+    self.input.set_start(self.start_txt.toPlainText())
+    self.input.set_end(self.end_txt.toPlainText())
+    self.input.set_learning_frames(learning_frames)
+
+
+    if self.input.get_start() and self.input.get_end():
+      start = self.input.get_start()
+      end = self.input.get_end()
+      start_m, start_s = start.split(':')
+      start_m = int(start_m)
+      start_s = int(start_s)
+      start = int((start_m*60+start_s))
+
+      end_m, end_s = end.split(':')
+      end_m = int(end_m)
+      end_s = int(end_s)
+      end = int((end_m*60+end_s))
+      if end <= start:
+        print("Please choose the right start and end.")
+        ret = False
 
     if ret:
       self.input.set_state("success")
@@ -116,6 +139,8 @@ class Input:
     self.mcap = None
     self.rcap = None
     self.state = None
+    self.start = None
+    self.end = None
 
   def validate(self) -> None:
     ret = False
@@ -145,5 +170,23 @@ class Input:
   def get_rcap(self):
     return self.rcap
 
+  def get_start(self):
+    return self.start
+
+  def get_end(self):
+    return self.end
+
+  def get_learning_frames(self):
+    return self.learning_frames
+
   def set_state(self, state):
     self.state = state
+
+  def set_start(self, start):
+    self.start = start
+
+  def set_end(self, end):
+    self.end = end
+  
+  def set_learning_frames(self, learning_frames):
+    self.learning_frames = learning_frames
