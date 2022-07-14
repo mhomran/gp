@@ -91,6 +91,9 @@ class PlayerTracker:
     self.mf_enable = mf_enable
     if self.mf_enable:
       MF = ModelField(lmrframe, samples_per_meter, clicks=clicks)
+      with open('modelField.pkl', 'wb') as f:
+        pickle.dump(MF, f)
+        f.close()
 
     
     # Player detection
