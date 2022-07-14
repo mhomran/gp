@@ -8,13 +8,14 @@ import csv
 import numpy as np 
 from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
+from Canvas.canvas import Canvas
 
 base_path = "D:/kollea/gradePorject/gp2/kalman_filter_multi_object_tracking/Data/VideoWithTags"
 base_path = "D:/kollea/gradePorject/last_version_gp/src/2,3part/progression"
 # base_path = "E:/0Senior/0_GP/detection_data1" 
 
 FRAME_OFFSET = 1
-GUI_WIDTH = 1500        
+GUI_WIDTH = 1700        
 
 class PlayerTracking(object):
     def __init__(self,MF):
@@ -28,6 +29,8 @@ class PlayerTracking(object):
                     (0, 255, 255), (255, 0, 255), (255, 127, 255),
                     (127, 0, 255), (127, 0, 127)]
         self.team_colors = [(255,255,255),(0,0,255),(0,255,255)]
+
+        self.canvas = Canvas()
 
     def _gui2orig(self, p):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
@@ -132,9 +135,10 @@ class PlayerTracking(object):
                     _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
                     np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 1)
         self.original_frame = original_frame
-        cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
-        cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
 
+        frame = imutils.resize(original_frame, width=GUI_WIDTH)
+        self.canvas.show_canvas(frame, top_view=field_image)
+        
         if cv.waitKey(10) == 32:
             cv.destroyAllWindows()
             self.switchPlayers(original_frame)
