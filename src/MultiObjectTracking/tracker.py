@@ -5,7 +5,7 @@ import pickle
 from MultiObjectTracking.AppearanceModel import AppearanceModel
 from MultiObjectTracking.MotionModel import MotionModel
 from ModelField.model_field import ModelField
-
+from MultiObjectTracking.Annotator import Annotator
 import cv2 as cv
 import copy
 import imutils
@@ -42,6 +42,12 @@ CLICKS  =   [(907, 427,0), #home goal keeper
             (2264, 590,1), (2201, 434,1), (2261, 383,1), (2110, 320,1), (2074, 421,1), (1986, 396,1), (1912, 450,1), (1723, 574,1), (1708, 418,1), (1801, 338,1),
             #away team
             (1837, 481,2),]#refree
+
+CLICKS = [(858, 425,0),
+(1365, 666,0), (1305, 532,0), (1321, 476,0), (1358, 407,0), (1436, 343,0), (1614, 414,0), (1728, 539,0), (1779, 334,0), (2068, 461,0), (2008, 416,0),
+(2793, 412,1),
+(2315, 603,1), (2350, 452,1), (2304, 374,1), (2119, 309,1), (2137, 427,1), (1983, 394,1), (1832, 441,1), (1672, 320,1), (1472, 434,1), (1467, 592,1),
+(1699, 443,2)]
 
 class GuiState(Enum):
     STATE_HOME_GOAL_KEEPER = 1,
@@ -85,6 +91,7 @@ class Tracker(object):
         self.init_state = GuiState.STATE_HOME_GOAL_KEEPER
         self.frame_count = 0
         self.MF = MF
+        self.annotator = Annotator(MF, gui_width=1800)    
         self.particles = MF._get_particles()
         self.clicks = []
         self.appearance_model = AppearanceModel(APPEARANCE_MODEL_C_H, 
@@ -100,7 +107,7 @@ class Tracker(object):
         
         if(len(self.tracks) == 0):  
             self.first_frame = frame
-            self.InitTracks2(detections, frame,original_frame)
+            self.InitTracks3(detections, frame,original_frame)
             return
 
         # initialing motion model and appearance model 
@@ -367,10 +374,20 @@ class Tracker(object):
 
             
 
-
+    # Create tracks if no tracks vector found
+    def InitTracks3(self,detections,frame,original_frame):
+        
+        detections = self.annotator.run(1, original_frame, detections)
+        for detection in detections:
+    
+            particle = self.MF.get_nearest_particle((detection[0],detection[1]))
+            x,y = particle.q_img
+            top_pos = particle.q
+            self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
+            
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
-        debug = False
+        debug = True
         if debug:
             for click in CLICKS:
                 
