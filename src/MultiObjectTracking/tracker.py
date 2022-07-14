@@ -196,7 +196,8 @@ class Tracker(object):
                         max_detection = detection
                         max_p_colmo = curr_p_colmo
                 assignment[id] = max_detection
-                un_assigned_detects.remove(max_detection)
+                if max_detection in un_assigned_detects:
+                    un_assigned_detects.remove(max_detection)
 
 
 
