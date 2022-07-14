@@ -373,7 +373,23 @@ class Tracker(object):
 
             
 
+    # Create tracks if no tracks vector found
+    def InitTracks3(self,detections,frame,original_frame):
+        
+        self.gui_img = original_frame.copy()
+        self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
+        self.done = False
+        self._write_hint("choose the Home goal keeper")
 
+        cv.namedWindow("GUI")
+        cv.setMouseCallback('GUI', self.clickEvent)
+        while True:
+            cv.imshow('GUI', self.gui_img)
+            if self.done:
+                cv.waitKey(2000)
+                cv.destroyAllWindows()
+                break
+            cv.waitKey(1)
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
         debug = True
