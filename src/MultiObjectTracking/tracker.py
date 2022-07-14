@@ -5,7 +5,7 @@ import pickle
 from MultiObjectTracking.AppearanceModel import AppearanceModel
 from MultiObjectTracking.MotionModel import MotionModel
 from ModelField.model_field import ModelField
-
+from MultiObjectTracking.Annotator import Annotator
 import cv2 as cv
 import copy
 import imutils
@@ -91,6 +91,7 @@ class Tracker(object):
         self.init_state = GuiState.STATE_HOME_GOAL_KEEPER
         self.frame_count = 0
         self.MF = MF
+        self.annotator = Annotator(MF, gui_width=1800)    
         self.particles = MF._get_particles()
         self.clicks = []
         self.appearance_model = AppearanceModel(APPEARANCE_MODEL_C_H, 
@@ -106,7 +107,7 @@ class Tracker(object):
         
         if(len(self.tracks) == 0):  
             self.first_frame = frame
-            self.InitTracks2(detections, frame,original_frame)
+            self.InitTracks3(detections, frame,original_frame)
             return
 
         # initialing motion model and appearance model 
@@ -376,20 +377,14 @@ class Tracker(object):
     # Create tracks if no tracks vector found
     def InitTracks3(self,detections,frame,original_frame):
         
-        self.gui_img = original_frame.copy()
-        self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-        self.done = False
-        self._write_hint("choose the Home goal keeper")
-
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self.clickEvent)
-        while True:
-            cv.imshow('GUI', self.gui_img)
-            if self.done:
-                cv.waitKey(2000)
-                cv.destroyAllWindows()
-                break
-            cv.waitKey(1)
+        detections = self.annotator.run(1, original_frame, detections)
+        for detection in detections:
+    
+            particle = self.MF.get_nearest_particle((detection[0],detection[1]))
+            x,y = particle.q_img
+            top_pos = particle.q
+            self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
+            
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
         debug = True

@@ -122,17 +122,19 @@ class PlayerTracking(object):
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
             self._write_hint(self.gui_img,"press x to correct,c to swtich,esc to return ")
-
+            self.state = 'idle'
         # if two clicks ana swtich
         if len(self.clicks)==2 and self.state == 'swtich':
             track1_id = self.closest_track(self.clicks[0])
             track2_id = self.closest_track(self.clicks[1])
+            print(track1_id,track2_id)
             self.clicks = []
             if track1_id  and track2_id:
                 self.swap_tracks(track1_id,track2_id)
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)    
             self._write_hint(self.gui_img,"press x to correct,c to swtich,esc to return ")
+            self.state = 'idle'
     def swap_tracks(self,track1_id,track2_id):
         # swap ids
         self.tracker.tracks[track1_id].track_id = track2_id
@@ -177,17 +179,18 @@ class PlayerTracking(object):
         # Use various colors to indicate different track_id
         original_frame = self._draw_tracks()
         self.original_frame = original_frame
+        
         # small field image
         for i in range(len(self.tracker.tracks)):
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
                     clr = self.tracker.tracks[i].team
-                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 10, self.team_colors[clr], -1)
+                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
                     x_offset = 10
                     if self.tracker.tracks[i].track_id <10:
                         x_offset = 5
                     _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
-                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 1)
+                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 3)
 
         # frame = imutils.resize(original_frame, width=GUI_WIDTH)
         # self.canvas.show_canvas(frame, top_view=field_image)
