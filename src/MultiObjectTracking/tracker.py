@@ -43,6 +43,12 @@ CLICKS  =   [(907, 427,0), #home goal keeper
             #away team
             (1837, 481,2),]#refree
 
+CLICKS = [(858, 425,0),
+(1365, 666,0), (1305, 532,0), (1321, 476,0), (1358, 407,0), (1436, 343,0), (1614, 414,0), (1728, 539,0), (1779, 334,0), (2068, 461,0), (2008, 416,0),
+(2793, 412,1),
+(2315, 603,1), (2350, 452,1), (2304, 374,1), (2119, 309,1), (2137, 427,1), (1983, 394,1), (1832, 441,1), (1672, 320,1), (1472, 434,1), (1467, 592,1),
+(1699, 443,2)]
+
 class GuiState(Enum):
     STATE_HOME_GOAL_KEEPER = 1,
     STATE_HOME = 2,
@@ -370,7 +376,7 @@ class Tracker(object):
 
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
-        debug = False
+        debug = True
         if debug:
             for click in CLICKS:
                 

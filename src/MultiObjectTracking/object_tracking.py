@@ -1,5 +1,4 @@
 # Import python libraries
-from tempfile import tempdir
 import cv2, imutils
 import cv2 as cv
 import copy
@@ -38,9 +37,10 @@ class PlayerTracking(object):
         cv.rectangle(img, (10, 2), (300, 20), (255, 255, 255), -1)
         cv.putText(img, msg, (15, 15),
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, color)  
-    def switchPlayers(self,original_frame):
-        
+    def modifyTracks(self):
         self.done = False
+        pass
+    def switchPlayers(self,original_frame):
         self.state = 'swtich'
         self._write_hint(original_frame,"choose two players to correct")
         self.gui_img = original_frame.copy()
@@ -55,8 +55,6 @@ class PlayerTracking(object):
                 break
             cv.waitKey(1)
     def correctTrack(self,original_frame):
-        
-        self.done = False
         self.state = 'repostion'
         self._write_hint(original_frame,"choose a player and a point to correct")
         self.gui_img = original_frame.copy()
@@ -76,7 +74,7 @@ class PlayerTracking(object):
         x,y = particle.q_img
         top_pos = particle.q
         point = [[x],[y]]
-        track_bb = self._get_BB_as_img(point,self.clean_original_frame)
+        track_bb = self.tracker._get_BB_as_img(point,self.clean_original_frame)
         self.tracker.tracks[track_id] = Track(point,track_id,track_bb,self.tracker.tracks[track_id].team,top_pos)
 
     def clickEvent(self, event, x, y, flags=None, params=None):
@@ -87,10 +85,10 @@ class PlayerTracking(object):
         # if 2 click and repostion
         if len(self.clicks)==2 and self.state == 'repostion':
             track1_id = self.closest_track(self.clicks[0])
-            self.clicks = []
             if track1_id:
-                self.recounstrw
+                self.repostionPlayer(track1_id,self.clicks[1])
                 
+            self.clicks = []
             self.done = True
 
         # if two clicks ana swtich
@@ -171,7 +169,9 @@ class PlayerTracking(object):
         self.original_frame = original_frame
         cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
-
+        if cv.waitKey(10) == 13:
+            cv.destroyAllWindows()
+            self.modifyTracks()
         if cv.waitKey(10) == ord('c'):
             cv.destroyAllWindows()
             self.switchPlayers(original_frame)
