@@ -1,24 +1,41 @@
-# importing the module
 import cv2 as cv
-from model_field import *
+from model_field import ModelField
 
 clicks = []
 img = None
+done = False
+frame = None
+top_view = None
+mf = None
 
+def click_event(event, x, y, flags=None, params=None):
+  print(x, y)
+  particle = mf.get_nearest_particle((x, y))
+  if particle:
+    cv.circle(frame, particle.q_img, 3, (0,0,255), 3)
+    cv.circle(top_view, particle.q, 3, (0,0,255), 3)
+  
 # driver function
 if __name__=="__main__":
-
-  # reading the image
-  cap = cv.VideoCapture("output.avi")
-  ret, frame = cap.read()
+  top_view = cv.imread("h.png")
   
-  mf_gui_clicks = [ (311, 110), (616, 101), (922, 103), # the three top corners
-                  (1196, 223), (619, 265), (27, 240), # the three bottom corners
-                  (195, 162), (193, 142), # the left post corners
-                  (1035, 152), (1037, 132) ] # the right post corners
+  cap = cv.VideoCapture("two_mins.avi")
+  _, frame = cap.read()
+  
+  mf = ModelField(frame, samples_per_meter=1)
 
-  mf = ModelField(frame, 1, clicks=mf_gui_clicks)
-  particle = mf.get_nearest_particle((1200, 500))
+  cv.namedWindow("frame", cv.WINDOW_NORMAL)
+  cv.namedWindow("top_view")
+  cv.resizeWindow("frame", 1200, 500)
+  
+  cv.setMouseCallback('frame', click_event)
+  while True:
+      cv.imshow('frame', frame)
+      cv.imshow('top_view', top_view)
+      
+      if cv.waitKey(1) == 27:
+        break
+
 
   cap.release()
   cv.destroyAllWindows()
