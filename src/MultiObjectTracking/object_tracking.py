@@ -8,10 +8,12 @@ import numpy as np
 from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
 from MultiObjectTracking.tracker import Track
+from MultiObjectTracking.ColorPlayers import ColorPlayers
 from Canvas.canvas import Canvas
- 
+
 base_path = "D:/kollea/gradePorject/gp2/kalman_filter_multi_object_tracking/Data/VideoWithTags"
 base_path = "D:/kollea/gradePorject/last_version_gp/src/2,3part/progression"
+
 # base_path = "E:/0Senior/0_GP/detection_data1" 
 
 FRAME_OFFSET = 1
@@ -24,13 +26,13 @@ class PlayerTracking(object):
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
         self.paths = [[]]*23
-        self.frameId = 1
+        self.frameId = 0
         self.clicks = []
         self.track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
                     (0, 255, 255), (255, 0, 255), (255, 127, 255),
                     (127, 0, 255), (127, 0, 127)]
         self.team_colors = [(255,255,255),(0,0,255),(0,255,255)]
-
+        self.first_frame = True
         self.canvas = Canvas()
 
     def _gui2orig(self, p):
@@ -90,14 +92,7 @@ class PlayerTracking(object):
                 self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
                 self._write_hint(self.gui_img,"choose a player and a point to correct")
             if k== 27:
-                self.done = True
-            
-        pass
-    def switchPlayers(self):
-        pass
-
-    def correctTrack(self):
-        pass        
+                self.done = True    
         
     def repostionPlayer(self,track_id,new_point):
         particle = self.MF.get_nearest_particle((new_point[0],new_point[1]))
@@ -115,7 +110,7 @@ class PlayerTracking(object):
         # if 2 click and repostion
         if len(self.clicks)==2 and self.state == 'repostion':
             track1_id = self.closest_track(self.clicks[0])
-            if track1_id:
+            if track1_id is not None:
                 self.repostionPlayer(track1_id,self.clicks[1])
                 
             self.clicks = []
@@ -129,7 +124,7 @@ class PlayerTracking(object):
             track2_id = self.closest_track(self.clicks[1])
             print(track1_id,track2_id)
             self.clicks = []
-            if track1_id  and track2_id:
+            if track1_id is not None and track2_id is not None:
                 self.swap_tracks(track1_id,track2_id)
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)    
@@ -169,34 +164,43 @@ class PlayerTracking(object):
         return dist
 
     def process_step(self,centers,masked,original_frame):
-        if (len(centers) == 0):return 
+        if (len(centers) == 0 ):return 
+        
         # Track object using Kalman Filter
         self.tracker.Update(centers, masked,original_frame)
         field_image = copy.deepcopy(self.field_image_orginal)
         self.clean_original_frame = copy.deepcopy(original_frame)
         self.masked = masked
+
         # For identified object tracks draw tracking line
         # Use various colors to indicate different track_id
         original_frame = self._draw_tracks()
         self.original_frame = original_frame
-        
+        if self.first_frame:
+            cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
+            self.first_frame =False
+            chooseColors = ColorPlayers()
+            teams = chooseColors.run(0,field_image,
+            [track.top_pos for track in  self.tracker.tracks ],
+            [track.team for track in  self.tracker.tracks ])
+            for i,_ in enumerate(self.tracker.tracks):
+                self.tracker.tracks[i].team  = teams[i]
         # small field image
         for i in range(len(self.tracker.tracks)):
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
                     clr = self.tracker.tracks[i].team
-                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 50, self.team_colors[clr], -1)
+                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 10, self.team_colors[clr], -1)
                     x_offset = 10
                     if self.tracker.tracks[i].track_id <10:
                         x_offset = 5
                     _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
-                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 3)
+                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 0.5)
 
-        # frame = imutils.resize(original_frame, width=GUI_WIDTH)
-        # self.canvas.show_canvas(frame, top_view=field_image)
+        frame = imutils.resize(original_frame, width=GUI_WIDTH)
+        self.canvas.show_canvas(frame, top_view=field_image)
         
-        cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
-        cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
+        # cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         k =cv.waitKey(10)
         if k ==13:
             cv.destroyAllWindows()
@@ -219,40 +223,3 @@ class PlayerTracking(object):
 
 
 
-def main():
-    player_tracker = PlayerTracking()
-
-    frameId = 1
-    debug = True
-    cap = cv2.VideoCapture(f'{base_path}/masked.avi')
-    caporiginal = cv2.VideoCapture(f'{base_path}/original.avi')
-    while(True):
-        # read the frame
-        ret, frame = cap.read()
-        ret , framoriginal = caporiginal.read()
-        # Make copy of original frame
-        frame_with_detections = copy.copy(framoriginal)
-        # detection phase
-        centers = TagReader.read(f"{base_path}/q_img_gt/{FRAME_OFFSET+frameId}.csv")
-        # tracking phase
-        
-        player_tracker.process_step(centers,frame,framoriginal)
-
-        if debug:
-            for i, point in enumerate(centers):
-                cv.circle(frame_with_detections,(int(point[0]),int(point[1])), 10, (0,0,255), -1)
-                _write_hint(frame_with_detections, str(i), ([int(point[0])],[int(point[1])]))
-            cv.imshow('Original', imutils.resize(frame_with_detections, width=GUI_WIDTH))
-            
-            ckpt = 2100
-            if (frameId > ckpt):
-                if cv.waitKey(0) == 27: exit()
-            else:
-                cv.waitKey(1)
-
-        frameId += 1
-
-
-if __name__ == "__main__":
-    # execute main
-    main()

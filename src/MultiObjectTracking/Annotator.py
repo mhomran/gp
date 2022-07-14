@@ -25,13 +25,13 @@ class Annotator:
         self.remove_th = remove_th
         self.skipped_frames = skipped_frames
 
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self._click_event)
-
+        
     def run(self, frame_id, img, q_img):
         self.q_img = q_img
         self.img = img
         self.frame_id = frame_id
+        cv.namedWindow("GUI")
+        cv.setMouseCallback('GUI', self._click_event)
 
         self._draw_q_img()
 
@@ -39,7 +39,7 @@ class Annotator:
         while keypress != 27:
             cv.imshow('GUI', self.gui_img)
             keypress = cv.waitKey(1)
-
+        cv.destroyAllWindows()
         return self.q_img
 
     def _draw_q_img(self):
@@ -53,7 +53,7 @@ class Annotator:
 
         msg = str(self.frame_id) + " "
         if self.frame_id == self.skipped_frames + 1:
-            msg += "[WARNNING]: The upcoming frames will be saved on disk"
+            msg += "you can add or remove a detection press esc to continue"
         self._write_hint(msg)
         
         msg = str(len(self.q_img))

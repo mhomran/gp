@@ -8,7 +8,6 @@ class Canvas:
 
     self.template = cv.imread("Canvas/template.png")
     self.canvas = None
-    cv.namedWindow("Trackista")
 
     self.frame_pos = frame_pos
     self.top_view_pos = top_view_pos
