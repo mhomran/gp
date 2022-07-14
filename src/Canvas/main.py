@@ -8,6 +8,7 @@ def main():
   frame_cap = cv.VideoCapture(frame_fn)
 
   top_view = cv.imread("h.png")
+  top_view = imutils.resize(top_view, 650)
 
   canvas = Canvas()
   while True:

@@ -4,7 +4,7 @@ import numpy as np
 
 class Canvas:
   def __init__(self, frame_pos=(50, 30), 
-  top_view_pos=(630, 500), status_pos=(50, 500)) -> None:
+  top_view_pos=(600, 470), status_pos=(50, 500)) -> None:
 
     self.template = cv.imread("Canvas/template.png")
     self.canvas = None
