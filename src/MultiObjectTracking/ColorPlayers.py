@@ -89,13 +89,13 @@ class ColorPlayers:
         x, y = self._gui2orig((x, y))
         if event == cv.EVENT_LBUTTONDOWN :
             nearest_player = self._get_nearest_player((x,y))
-            if nearest_player:
+            if nearest_player  is not None:
                 if self.colors[nearest_player] ==2:
                     self.colors[nearest_player] =1
                 self.colors[nearest_player] = 1-self.colors[nearest_player]
             self._draw_top_pos()
         elif event == cv.EVENT_RBUTTONDOWN :
             nearest_player = self._get_nearest_player((x,y))
-            if nearest_player:
+            if nearest_player  is not None:
                 self.colors[nearest_player] = 2
             self._draw_top_pos()

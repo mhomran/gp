@@ -27,7 +27,7 @@ class ClustringModule:
   
         return kmeans.labels_
     
-    def load_images_from_folder(folder):
+    def load_images_from_folder(self,folder):
         images = []
         for filename in os.listdir(folder):
             img = cv2.imread(os.path.join(folder,filename))
