@@ -417,6 +417,7 @@ class Tracker(object):
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, color)  
     def makeTrack(self,point,frame,team,top_pos):
         track_bb = self._get_BB_as_img(point,frame)
+        cv.imwrite(f'players/{self.next_trackId}.bmp',track_bb)
         track = Track(point,self.next_trackId,track_bb,team,top_pos)
         self.next_trackId +=1 
         self.tracks.append(track)

@@ -9,6 +9,7 @@ from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
 from MultiObjectTracking.tracker import Track
 from MultiObjectTracking.ColorPlayers import ColorPlayers
+from MultiObjectTracking.ClusterPlayers import ClustringModule
 from Canvas.canvas import Canvas
 
 base_path = "D:/kollea/gradePorject/gp2/kalman_filter_multi_object_tracking/Data/VideoWithTags"
@@ -26,6 +27,7 @@ class PlayerTracking(object):
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
         self.paths = [[]]*23
+        self.clustrModule = ClustringModule()
         self.frameId = 0
         self.clicks = []
         self.track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
@@ -182,7 +184,7 @@ class PlayerTracking(object):
             chooseColors = ColorPlayers()
             teams = chooseColors.run(0,field_image,
             [track.top_pos for track in  self.tracker.tracks ],
-            [track.team for track in  self.tracker.tracks ])
+            self.clustrModule.getTeamsColors())
             for i,_ in enumerate(self.tracker.tracks):
                 self.tracker.tracks[i].team  = teams[i]
         # small field image
