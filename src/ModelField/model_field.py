@@ -322,26 +322,6 @@ class ModelField:
             particle = self.s_by_q[(n_x, n_y)]
 
         return particle
-        # get the four corners of the box surrounding the input point
-        # x_tl = x - x % self.sample_inc_w
-        # y_tl = y - y % self.sample_inc_h
-        # x_tr = x_tl + self.sample_inc_w
-        # y_tr = y_tl
-        # x_bl = x_tl
-        # y_bl = y_tl + self.sample_inc_h
-        # x_br = x_tr
-        # y_br = y_bl
-
-        # min_dst = np.inf
-        # corners = [(x_tl, y_tl), (x_tr, y_tr), (x_br, y_br), (x_bl, y_bl)]
-        # print(corners)
-        # for corner in corners:
-        #     dst = self._euclidean_distance(corner, q)
-        #     if min_dst > dst and corner in self.s_by_q:
-        #         min_dst = dst
-        #        particle = self.s_by_q[corner]
-
-        # return particle
 
     def _get_particles(self):
         return self.s
@@ -350,3 +330,53 @@ class ModelField:
         with open('particles.pkl', 'wb') as f:
             pickle.dump(self.s, f)
             f.close()
+
+    def get_dist_in_meters(self, p1, p2):
+        """
+        Description: get the distance between two particles 
+        in meters.
+
+        Input:
+            - p1: the first particle
+            - p2: the second particle
+
+        output:
+            - dist: the distance in meters
+        """
+        dist = None
+
+        q1 = p1.q
+        q2 = p2.q
+
+        w = np.abs(q1[0] - q2[0])
+        h = np.abs(q1[1] - q2[1])
+
+        h_in_m = h / self.px_per_m_h 
+        w_in_m = w / self.px_per_m_w 
+        
+        dist = np.sqrt((w_in_m**2)+(h_in_m**2))
+
+        return dist
+
+    def convert_px2m(self, dist):
+        """
+        Description: convert the distance in pixels to meters.
+
+        Input:
+            - dist: a tuple contains the distance in pixels for
+            the height and width respectively.
+
+        output:
+            - res: a tuple contains the distance in meters for 
+            the height and width respectively
+        """
+        res = None
+
+        h, w = dist
+        h_in_m = h / self.px_per_m_h 
+        w_in_m = w / self.px_per_m_w 
+
+        return h_in_m, w_in_m
+
+
+
