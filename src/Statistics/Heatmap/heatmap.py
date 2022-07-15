@@ -9,7 +9,7 @@ class Heatmap():
         n_levels=10,
         cmap = 'magma') -> None:
     
-        self.shade = True
+        self.shade = shade
         self.n_levels = n_levels
         self.cmap = cmap
 
@@ -19,9 +19,10 @@ class Heatmap():
         df = pd.read_csv(fname)
         img = plt.imread("h.png")
         h, w, _ = img.shape
+        fps = 25
 
         for track_id in tqdm (range (22), desc="Loading..."):
-            track_df = df[df.track_id==track_id]
+            track_df = df[df.track_id==track_id][::fps]
 
             x = track_df.x
             y = track_df.y
@@ -33,9 +34,9 @@ class Heatmap():
             sns.kdeplot(
                     x=x,
                     y=y,
-                    shade = True,
-                    n_levels=10,
-                    cmap = 'magma'
+                    shade = self.shade,
+                    n_levels=self.n_levels,
+                    cmap = self.cmap
             )
 
             plt.xlim((0, w))
@@ -46,7 +47,7 @@ class Heatmap():
             plt.close(fig)
 
 def main():
-    hm = Heatmap()
+    hm = Heatmap(cmap="icefire")
     
     hm.save_heatmaps("tracks_with_q.csv", output_folder="heatmaps")
 
