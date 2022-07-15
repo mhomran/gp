@@ -200,7 +200,7 @@ class PlayerTracking(object):
                     np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 0.5)
 
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
-        self.canvas.show_canvas(frame, top_view=field_image)
+        self.canvas.show_canvas(frame, top_view=imutils.resize(field_image, 650))
         
         # cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
         k =cv.waitKey(10)
