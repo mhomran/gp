@@ -15,14 +15,14 @@ class Heatmap():
 
   
     
-    def save_heatmaps(self, fname, output_folder=""):
-        df = pd.read_csv(fname)
+    def save_heatmaps(self, input_folder, output_folder=""):
         img = plt.imread("h.png")
         h, w, _ = img.shape
         fps = 25
 
         for track_id in tqdm (range (22), desc="Loading..."):
-            track_df = df[df.track_id==track_id][::fps]
+            df = pd.read_csv(f"{input_folder}/{track_id}.csv")
+            track_df = df[::fps]
 
             x = track_df.x
             y = track_df.y
@@ -49,7 +49,7 @@ class Heatmap():
 def main():
     hm = Heatmap(cmap="icefire")
     
-    hm.save_heatmaps("tracks_with_q.csv", output_folder="heatmaps")
+    hm.save_heatmaps("stats", output_folder="heatmaps")
 
 
 main()
