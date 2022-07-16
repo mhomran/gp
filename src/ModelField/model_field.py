@@ -75,11 +75,12 @@ class ModelField:
             canvas.set_callback(self.click_event)
             while True:
                 self.gui_img = imutils.resize(self.original_img, width=GUI_WIDTH)
-                canvas.show_canvas(self.gui_img, status=self.hint)
+                canvas.show_canvas(self.gui_img, status=self.hint, info="Press esc to exit.")
                 if self.done:
                     cv.waitKey(2000)
                     break
-                cv.waitKey(1)
+                if cv.waitKey(1) == 27:
+                    exit()
         else:
             for click in clicks:
                 self.click_event(cv.EVENT_LBUTTONDOWN, click[0], click[1])
@@ -96,12 +97,12 @@ class ModelField:
         # checking for left mouse clicks
         if event == cv.EVENT_LBUTTONDOWN:
             self.clicks.append(self._gui2orig((x, y)))
+            curr_click = self.clicks[-1]
+            self.original_img = cv.circle(
+                self.original_img, curr_click, 10, RED_COLOR, cv.FILLED)
 
             if self.gui_state == GuiState.STATE_CORNERS:
                 if len(self.clicks) < 6:
-                    curr_click = self.clicks[-1]
-                    self.original_img = cv.circle(
-                        self.original_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
                     if len(self.clicks) == 1:
                         self._write_hint("choose the upper center corner")
                     elif len(self.clicks) == 2:
@@ -277,7 +278,6 @@ class ModelField:
                 s_total[q_img] = s
                 s_by_q_total[q] = s
 
-                B.draw(self.original_img)
                 self.grid = cv.circle(self.grid, q, 2, BLUE_COLOR, cv.FILLED)
                 self.original_img = cv.circle(
                     self.original_img, q_img, THICKNESS, BLUE_COLOR, cv.FILLED)

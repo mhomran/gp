@@ -1,4 +1,5 @@
 import cv2 as cv
+from Canvas.canvas import Canvas
 from model_field import ModelField
 
 clicks = []
@@ -22,7 +23,8 @@ if __name__=="__main__":
   cap = cv.VideoCapture("two_mins.avi")
   _, frame = cap.read()
   
-  mf = ModelField(frame, samples_per_meter=1)
+  canvas = Canvas(frame.shape, top_view_shape=top_view.shape)
+  mf = ModelField(frame, samples_per_meter=1, canvas=canvas)
 
   cv.namedWindow("frame", cv.WINDOW_NORMAL)
   cv.namedWindow("top_view")

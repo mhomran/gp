@@ -99,8 +99,15 @@ class PlayerTracker:
     self.mf_enable = mf_enable
     if self.mf_enable:
       if os.path.exists('.model_field.pkl') and not force_mf:
-        with open('.model_field.pkl', 'rb') as f:
-          MF = pickle.load(f)
+        try:
+          with open('.model_field.pkl', 'rb') as f:
+            MF = pickle.load(f)
+        except:
+          with open('.model_field.pkl', 'wb') as f:
+            MF = ModelField(lmrframe, samples_per_meter, self.canvas, 
+            clicks=clicks)
+            pickle.dump(MF, f)
+            f.close()
       else:
         with open('.model_field.pkl', 'wb') as f:
           MF = ModelField(lmrframe, samples_per_meter, self.canvas, 
@@ -263,13 +270,11 @@ class PlayerTracker:
           break
 
       else:
-        self.canvas.show_canvas(imutils.resize(lmrframe,width = GUI_WIDTH),status='loading....')
-        cv.waitKey(1)
+        self.canvas.show_canvas(imutils.resize(lmrframe, width = GUI_WIDTH),
+        status='loading....',
+        info="Press esc to exit.")
+        if cv.waitKey(1) == 27:
+          break
 
       print(f"frame #{self.frameId}")
       self.frameId += 1
-
-
-
-  
-  

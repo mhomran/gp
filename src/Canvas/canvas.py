@@ -14,7 +14,7 @@ class Canvas:
     self.top_view_shape = top_view_shape
     self.top_view_pos = top_view_pos
     self.status_pos = status_pos
-    self.status_bg_bb = [50, 500, 600, 560]
+    self.status_bg_bb = [50, 500, 650, 560]
     self.status_bg_rad = 5
     self.info_pos = info_pos
     self.info_bg_bb = [50, 600, 600, 860]
