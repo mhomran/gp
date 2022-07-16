@@ -271,6 +271,9 @@ class PlayerTracker:
         else:
           break
 
+      else:
+        self.canvas.show_canvas(imutils.resize(lmrframe,width = GUI_WIDTH),status='loading....')
+
       print(f"frame #{self.frameId}")
       self.frameId += 1
 
