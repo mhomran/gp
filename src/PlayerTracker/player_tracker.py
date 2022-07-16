@@ -89,8 +89,9 @@ class PlayerTracker:
       self.bg_limit = bg_limit
 
     # Initialize a canvas
+    top_veiw_shape =imutils.resize(cv.imread('h.png'), 650).shape
     gui_size = imutils.resize(lmrframe, width=GUI_WIDTH).shape
-    self.canvas = Canvas(gui_size)
+    self.canvas = Canvas(gui_size,top_view_shape=top_veiw_shape)
 
     # Model Field
     self.mf_enable = mf_enable

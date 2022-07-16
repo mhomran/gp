@@ -36,7 +36,7 @@ class PlayerTracking(object):
         self.team_colors = [(255,255,255),(0,0,255),(0,255,255)]
         self.first_frame = True
         self.canvas = canvas
-
+        self.hint = ''
     def _gui2orig(self, p):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
         y = p[1] * self.original_frame.shape[0] // self.gui_img.shape[0]
@@ -47,6 +47,17 @@ class PlayerTracking(object):
         cv.putText(img, msg, (15, 15),
                    cv.FONT_HERSHEY_SIMPLEX, 0.25, color)  
 
+    def draw_top_view(self):
+        field_image = copy.deepcopy(self.field_image_orginal)
+        for i in range(len(self.tracker.tracks)):
+            clr = self.tracker.tracks[i].team
+            cv.circle(field_image,self.tracker.tracks[i].top_pos, 10, self.team_colors[clr], -1)
+            x_offset = 10
+            if self.tracker.tracks[i].track_id <10:
+                x_offset = 5
+            _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
+            np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 0.5)
+        return field_image
 
     def _draw_tracks(self):
         result_frame = copy.deepcopy(self.clean_original_frame)
@@ -65,38 +76,35 @@ class PlayerTracking(object):
                 
             _write_hint(result_frame, str(self.tracker.tracks[i].track_id), self.tracker.tracks[i].trace[-1])
         return result_frame
+    def _write_hint(self, msg):
+        self.hint = msg
     def modifyTracks(self):
         self.done = False
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self.clickEvent)
+        
+        self.canvas.set_callback(self.clickEvent)
         self.gui_img = self._draw_tracks()
+        msg = "press x to correct,c to swtich,esc to return"
+        self._write_hint(msg)
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-        self._write_hint(self.gui_img,"press x to correct,c to swtich,esc to return ")
+        field_image = self.draw_top_view()
+        self.field_image  = imutils.resize(field_image, 650)
         self.state = 'idle'
         while True:
             
-                
-            cv.imshow('GUI', self.gui_img)
+            self.canvas.show_canvas(self.gui_img,top_view = self.field_image, status=self.hint)
             if self.done:
                 cv.waitKey(500)
-                cv.destroyAllWindows()
                 break
             k = cv.waitKey(10)
             if k==ord('c'):
-                print('correction')
                 self.state = 'swtich'
-                self.gui_img = self._draw_tracks()
-                self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-                self._write_hint(self.gui_img,"choose two players to correct")
+                self._write_hint("choose two players to correct")
             if k==ord('x'):
-                print('swtiching')
                 self.state = 'repostion'
-                self.gui_img = self._draw_tracks()
-                self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-                self._write_hint(self.gui_img,"choose a player and a point to correct")
+                self._write_hint("choose a player and a point to correct")
             if k== 27:
                 self.done = True    
-        
+    
     def repostionPlayer(self,track_id,new_point):
         particle = self.MF.get_nearest_particle((new_point[0],new_point[1]))
         x,y = particle.q_img
@@ -117,22 +125,26 @@ class PlayerTracking(object):
                 self.repostionPlayer(track1_id,self.clicks[1])
                 
             self.clicks = []
+            self._write_hint("press x to correct,c to swtich,esc to return ")
+            self.state = 'idle'
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-            self._write_hint(self.gui_img,"press x to correct,c to swtich,esc to return ")
-            self.state = 'idle'
+            field_image = self.draw_top_view()
+            self.field_image  = imutils.resize(field_image, 650)
+        
         # if two clicks ana swtich
         if len(self.clicks)==2 and self.state == 'swtich':
             track1_id = self.closest_track(self.clicks[0])
             track2_id = self.closest_track(self.clicks[1])
-            print(track1_id,track2_id)
             self.clicks = []
             if track1_id is not None and track2_id is not None:
-                self.swap_tracks(track1_id,track2_id)
-            self.gui_img = self._draw_tracks()
-            self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)    
-            self._write_hint(self.gui_img,"press x to correct,c to swtich,esc to return ")
+                self.swap_tracks(track1_id,track2_id)  
+            self._write_hint("press x to correct,c to swtich,esc to return ")
             self.state = 'idle'
+            self.gui_img = self._draw_tracks()
+            self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
+            field_image = self.draw_top_view()
+            self.field_image  = imutils.resize(field_image, 650)
     def swap_tracks(self,track1_id,track2_id):
         # swap ids
         self.tracker.tracks[track1_id].track_id = track2_id
@@ -171,8 +183,8 @@ class PlayerTracking(object):
         
         # Track object using Kalman Filter
         self.tracker.Update(centers, masked,original_frame)
-        field_image = copy.deepcopy(self.field_image_orginal)
         self.clean_original_frame = copy.deepcopy(original_frame)
+        field_image = copy.deepcopy(self.field_image_orginal)
         self.masked = masked
 
         # For identified object tracks draw tracking line
@@ -180,33 +192,22 @@ class PlayerTracking(object):
         original_frame = self._draw_tracks()
         self.original_frame = original_frame
         if self.first_frame:
-            cv.imshow('Tracking', imutils.resize(original_frame, width=GUI_WIDTH))
             self.first_frame =False
-            chooseColors = ColorPlayers()
+            chooseColors = ColorPlayers(imutils.resize(original_frame, width=GUI_WIDTH),self.canvas)
             teams = chooseColors.run(0,field_image,
             [track.top_pos for track in  self.tracker.tracks ],
             self.clustrModule.getTeamsColors())
             for i,_ in enumerate(self.tracker.tracks):
                 self.tracker.tracks[i].team  = teams[i]
         # small field image
-        for i in range(len(self.tracker.tracks)):
-            if (len(self.tracker.tracks[i].trace) > 1):
-                for j in range(len(self.tracker.tracks[i].trace)-1):
-                    clr = self.tracker.tracks[i].team
-                    cv.circle(field_image,self.tracker.tracks[i].top_pos, 10, self.team_colors[clr], -1)
-                    x_offset = 10
-                    if self.tracker.tracks[i].track_id <10:
-                        x_offset = 5
-                    _write_hint(field_image, str(self.tracker.tracks[i].track_id), 
-                    np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 0.5)
-
+        field_image = self.draw_top_view()
+        field_image  = imutils.resize(field_image, 650)
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
-        self.canvas.show_canvas(frame, top_view=imutils.resize(field_image, 650))
+        self.canvas.show_canvas(frame, top_view=field_image)
         
-        # cv.imshow('field',imutils.resize(field_image, width=GUI_WIDTH//3))
+       
         k =cv.waitKey(10)
         if k ==13:
-            cv.destroyAllWindows()
             self.modifyTracks()
         if k == 27:
             exit()

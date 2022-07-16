@@ -9,7 +9,7 @@ class GuiState(Enum):
     STATE_GOAL = 2,
 
 class ColorPlayers:
-    def __init__(self, gui_width=800, remove_th=10,
+    def __init__(self,tracks_img, canvas, gui_width=800, remove_th=10,
     skipped_frames=0) -> None:
         self.gui_width = gui_width
         self.q_img = []
@@ -19,26 +19,25 @@ class ColorPlayers:
         self.frame_id = None
         self.remove_th = remove_th
         self.skipped_frames = skipped_frames
-
-        cv.namedWindow("GUI-ChooseColors")
-        cv.setMouseCallback('GUI-ChooseColors', self._click_event)
+        self.tracks_img = tracks_img
+        self.canvas = canvas
+        self.hint = ""
 
     def run(self, frame_id, img, top_pos,colors):
         self.top_pos = top_pos
         self.img = img
         self.frame_id = frame_id
         self.colors = colors
+        self.canvas.set_top_view_callback(self._click_event)
         self._draw_top_pos()
 
         keypress = None
         while keypress != 27:
-            cv.imshow('GUI-ChooseColors', self.gui_img)
+            self.canvas.show_canvas(self.tracks_img,top_view = self.gui_img, status=self.hint)
             keypress = cv.waitKey(1)
-        cv.destroyAllWindows()
         return self.colors
 
     def _draw_top_pos(self):
-        print('update')
         temp_img = self.img.copy()
         player_count = 0
         for top_pos_i,team in zip(self.top_pos,self.colors):
@@ -52,10 +51,9 @@ class ColorPlayers:
                     np.array([[top_pos_i[0]-x_offset],[top_pos_i[1]+5]]),font = 0.5)
 
             player_count+=1
-        self.gui_img = imutils.resize(temp_img, width=self.gui_width)
+        self.gui_img = imutils.resize(temp_img, width=650)
 
-        msg = str(self.frame_id) + " "
-        msg += "you can change any player color "
+        msg = "you can change any player color"
         self._write_hint(msg)
 
     
@@ -68,10 +66,8 @@ class ColorPlayers:
         dst = np.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2))
         return dst
 
-    def _write_hint(self, msg, color=(0, 0, 0), pt1=(10, 2), pt2=(600, 20),font = 0.5):
-        cv.rectangle(self.gui_img, pt1, pt2, (255, 255, 255), -1)
-        cv.putText(self.gui_img, msg, (pt1[0]+5, pt1[1]+13),
-                    cv.FONT_HERSHEY_SIMPLEX, font, color)
+    def _write_hint(self, msg):
+        self.hint = msg
 
     def _get_nearest_player(self,click):
         min_dist = 100
