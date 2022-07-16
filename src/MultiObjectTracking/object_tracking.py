@@ -19,6 +19,7 @@ base_path = "D:/kollea/gradePorject/last_version_gp/src/2,3part/progression"
 
 FRAME_OFFSET = 1
 GUI_WIDTH = 1700        
+TOP_VIEW_WIDTH = 500
 
 class PlayerTracking(object):
     def __init__(self, MF, canvas,base_path ='.'):
@@ -87,7 +88,7 @@ class PlayerTracking(object):
         self._write_hint(msg)
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
         field_image = self.draw_top_view()
-        self.field_image  = imutils.resize(field_image, 650)
+        self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         self.state = 'idle'
         while True:
             
@@ -130,7 +131,7 @@ class PlayerTracking(object):
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
             field_image = self.draw_top_view()
-            self.field_image  = imutils.resize(field_image, 650)
+            self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         
         # if two clicks ana swtich
         if len(self.clicks)==2 and self.state == 'swtich':
@@ -144,7 +145,7 @@ class PlayerTracking(object):
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
             field_image = self.draw_top_view()
-            self.field_image  = imutils.resize(field_image, 650)
+            self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
     def swap_tracks(self,track1_id,track2_id):
         # swap ids
         self.tracker.tracks[track1_id].track_id = track2_id
@@ -201,7 +202,7 @@ class PlayerTracking(object):
                 self.tracker.tracks[i].team  = teams[i]
         # small field image
         field_image = self.draw_top_view()
-        field_image  = imutils.resize(field_image, 650)
+        field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
         self.canvas.show_canvas(frame, top_view=field_image)
         

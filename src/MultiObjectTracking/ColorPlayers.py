@@ -3,6 +3,9 @@ import imutils
 from enum import Enum
 import numpy as np
 from MultiObjectTracking.helper import _write_hint as write_number
+
+TOP_VIEW_WIDTH = 500
+
 COLORS = [(255,255,255),(0,0,255),(0,255,255)]
 class GuiState(Enum):
     STATE_CORNERS = 1,
@@ -51,7 +54,7 @@ class ColorPlayers:
                     np.array([[top_pos_i[0]-x_offset],[top_pos_i[1]+5]]),font = 0.5)
 
             player_count+=1
-        self.gui_img = imutils.resize(temp_img, width=650)
+        self.gui_img = imutils.resize(temp_img, width=TOP_VIEW_WIDTH)
 
         msg = "you can change any player color"
         self._write_hint(msg)
