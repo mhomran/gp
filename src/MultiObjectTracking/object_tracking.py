@@ -38,6 +38,7 @@ class PlayerTracking(object):
         self.first_frame = True
         self.canvas = canvas
         self.hint = ''
+        self.info = ''
     def _gui2orig(self, p):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
         y = p[1] * self.original_frame.shape[0] // self.gui_img.shape[0]
@@ -63,7 +64,6 @@ class PlayerTracking(object):
     def _draw_tracks(self):
         result_frame = copy.deepcopy(self.clean_original_frame)
         for i in range(len(self.tracker.tracks)):
-            self.paths[i].append(self.tracker.tracks[i].top_pos)
             if (len(self.tracker.tracks[i].trace) > 1):
                 for j in range(len(self.tracker.tracks[i].trace)-1):
                     # Draw trace line
@@ -74,36 +74,41 @@ class PlayerTracking(object):
                     clr = self.tracker.tracks[i].track_id % 9
                     cv.line(result_frame, (int(x1), int(y1)), (int(x2), int(y2)),
                                 self.track_colors[clr], 5)
-                
-            _write_hint(result_frame, str(self.tracker.tracks[i].track_id), self.tracker.tracks[i].trace[-1])
+            player_pos = copy.deepcopy(self.tracker.tracks[i].trace[-1])
+            player_pos[0][0] += 20
+            _write_hint(result_frame, str(self.tracker.tracks[i].track_id),player_pos )
         return result_frame
     def _write_hint(self, msg):
         self.hint = msg
+    def _write_info(self,msg):
+        self.info = msg
     def modifyTracks(self):
         self.done = False
         
         self.canvas.set_callback(self.clickEvent)
         self.gui_img = self._draw_tracks()
-        msg = "press x to correct,c to swtich,esc to return"
-        self._write_hint(msg)
+        self._write_hint("modifying tracks")
+        self._write_info('''Press c to swap two tracks \n
+Press x to correct a track \n
+Press enter to continue.''')
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
         field_image = self.draw_top_view()
         self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         self.state = 'idle'
         while True:
             
-            self.canvas.show_canvas(self.gui_img,top_view = self.field_image, status=self.hint)
+            self.canvas.show_canvas(self.gui_img,top_view = self.field_image, status=self.hint,info = self.info)
             if self.done:
                 cv.waitKey(500)
                 break
             k = cv.waitKey(10)
             if k==ord('c'):
                 self.state = 'swtich'
-                self._write_hint("choose two players to correct")
+                self._write_info("choose two players to swap")
             if k==ord('x'):
                 self.state = 'repostion'
-                self._write_hint("choose a player and a point to correct")
-            if k== 27:
+                self._write_info("choose a player and a point to correct")
+            if k== 13:
                 self.done = True    
     
     def repostionPlayer(self,track_id,new_point):
@@ -126,7 +131,10 @@ class PlayerTracking(object):
                 self.repostionPlayer(track1_id,self.clicks[1])
                 
             self.clicks = []
-            self._write_hint("press x to correct,c to swtich,esc to return ")
+            self._write_hint("modifying tracks")
+            self._write_info('''Press c to swap two tracks \n
+Press x to correct a track \n
+Press enter to continue.''')
             self.state = 'idle'
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
@@ -140,7 +148,10 @@ class PlayerTracking(object):
             self.clicks = []
             if track1_id is not None and track2_id is not None:
                 self.swap_tracks(track1_id,track2_id)  
-            self._write_hint("press x to correct,c to swtich,esc to return ")
+            self._write_hint("modifying tracks")
+            self._write_info('''Press c to swap two tracks \n 
+Press x to correct a track \n
+Press enter to continue.''')
             self.state = 'idle'
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
@@ -204,13 +215,15 @@ class PlayerTracking(object):
         field_image = self.draw_top_view()
         field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
-        self.canvas.show_canvas(frame, top_view=field_image)
+        self._write_info('''Press esc to exit \n
+Press m to modify tracks''')
+        self.canvas.show_canvas(frame, top_view=field_image,info = self.info)
         
        
         k =cv.waitKey(10)
-        if k ==13:
+        if k == ord('m'):
             self.modifyTracks()
-        if k == 27:
+        if k == 13:
             exit()
 
     def write_data(self):

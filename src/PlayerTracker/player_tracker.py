@@ -236,7 +236,7 @@ class PlayerTracker:
         lmrframe_masked[fgMask==0] = np.zeros(3)
         
 
-        self.IMG.writeTxt(lmrframe, self.frameId)
+        self.IMG.writeTxt(lmrframe, f'{round(self.frameId/int(self.fps),2)}')
         keyboard = cv.waitKey(1)
         if keyboard == 'q' or keyboard == 27:
           break

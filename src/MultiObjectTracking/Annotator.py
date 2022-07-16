@@ -26,7 +26,7 @@ class Annotator:
         self.skipped_frames = skipped_frames
         self.canvas = canvas
         self.hint = ""
-        
+        self.info = ''
     def run(self, frame_id, img, q_img):
         self.q_img = q_img
         self.img = img
@@ -36,8 +36,8 @@ class Annotator:
         self._draw_q_img()
 
         keypress = None
-        while keypress != 27:
-            self.canvas.show_canvas(self.gui_img, status=self.hint)
+        while keypress != 13:
+            self.canvas.show_canvas(self.gui_img, status=self.hint,info = self.info)
             keypress = cv.waitKey(1)
         return self.q_img
 
@@ -49,13 +49,15 @@ class Annotator:
             cv.circle(temp_img, (x, y), 10, (0,0,255), -1)
 
         self.gui_img = imutils.resize(temp_img, width=self.gui_width)
-        msg = ""
-        msg += "You can add or remove a detection.\n"
-        msg += "Press esc to continue.\n"
-        msg += "Number of players: " + str(len(self.q_img)) + "\n"
-
-        self._write_hint(msg)
-
+        self._write_hint("choosing players to  tracks")
+        self._write_info(
+'''Press right click to add a track\n 
+Press left click to remove a track\n
+Press enter to continue.'''+
+f'\n\ncurrent number of tracks:{len(self.q_img)}'
+)
+    def _write_info(self,msg):
+        self.info = msg
     def _gui2orig(self, p):
         x = p[0] * self.img.shape[1] // self.gui_img.shape[1]
         y = p[1] * self.img.shape[0] // self.gui_img.shape[0]

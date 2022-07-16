@@ -14,7 +14,10 @@ class ClustringModule:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             Mask = (img[:, :, 0:3] > [30,30,30]).all(2)
             img = img[Mask]
-            kmeans = KMeans(n_clusters=2, random_state=0).fit(img)
+            try:
+                kmeans = KMeans(n_clusters=2, random_state=0).fit(img)
+            except:
+                return np.zeros(len(imgs),dtype = int)
             dominant_colors = kmeans.cluster_centers_
             indexlist = np.argsort( np.apply_along_axis( np.linalg.norm, 1, dominant_colors))
             dominant_colors = dominant_colors[indexlist]
@@ -23,8 +26,10 @@ class ClustringModule:
             dominanteColors.append(dominant_colors.reshape(6))
             
         dominanteColors =  np.array(dominanteColors)
-        kmeans = KMeans(n_clusters=2, random_state=0).fit(dominanteColors)
-  
+        try:
+            kmeans = KMeans(n_clusters=2, random_state=0).fit(dominanteColors)
+        except:
+                return np.zeros(len(imgs),dtype = int)
         return kmeans.labels_
     
     def load_images_from_folder(self,folder):

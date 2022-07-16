@@ -25,7 +25,7 @@ class ColorPlayers:
         self.tracks_img = tracks_img
         self.canvas = canvas
         self.hint = ""
-
+        self.info = ''
     def run(self, frame_id, img, top_pos,colors):
         self.top_pos = top_pos
         self.img = img
@@ -35,11 +35,12 @@ class ColorPlayers:
         self._draw_top_pos()
 
         keypress = None
-        while keypress != 27:
-            self.canvas.show_canvas(self.tracks_img,top_view = self.gui_img, status=self.hint)
+        while keypress != 13:
+            self.canvas.show_canvas(self.tracks_img,top_view = self.gui_img, status=self.hint,info = self.info)
             keypress = cv.waitKey(1)
         return self.colors
-
+    def _write_info(self,msg):
+        self.info = msg
     def _draw_top_pos(self):
         temp_img = self.img.copy()
         player_count = 0
@@ -56,9 +57,10 @@ class ColorPlayers:
             player_count+=1
         self.gui_img = imutils.resize(temp_img, width=TOP_VIEW_WIDTH)
 
-        msg = "you can change any player color"
-        self._write_hint(msg)
-
+        self._write_hint("modifying players teams")
+        self._write_info('''Press left click to toggle color \n 
+Press right click to choose refree \n
+Press enter to continue.''')
     
     def _gui2orig(self, p):
         x = p[0] * self.img.shape[1] // self.gui_img.shape[1]
