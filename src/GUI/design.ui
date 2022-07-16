@@ -38,7 +38,7 @@
     <property name="geometry">
      <rect>
       <x>120</x>
-      <y>220</y>
+      <y>190</y>
       <width>106</width>
       <height>30</height>
      </rect>
@@ -51,20 +51,20 @@
     <property name="geometry">
      <rect>
       <x>340</x>
-      <y>220</y>
+      <y>190</y>
       <width>106</width>
       <height>30</height>
      </rect>
     </property>
     <property name="text">
-     <string>center</string>
+     <string>mid</string>
     </property>
    </widget>
    <widget class="QPushButton" name="pick_right_btn">
     <property name="geometry">
      <rect>
       <x>560</x>
-      <y>220</y>
+      <y>190</y>
       <width>106</width>
       <height>30</height>
      </rect>
@@ -149,6 +149,54 @@
     </property>
     <property name="placeholderText">
      <string>learning frames</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pick_left_lbl">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>230</y>
+      <width>51</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Done</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pick_mid_lbl">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>380</x>
+      <y>230</y>
+      <width>51</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Done</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="pick_right_lbl">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>230</y>
+      <width>51</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Done</string>
     </property>
    </widget>
   </widget>

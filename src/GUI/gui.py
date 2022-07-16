@@ -21,8 +21,12 @@ class PlayerTrackerWin(QMainWindow):
 
   def init_ui(self):
     self.pick_left_btn = self.findChild(QtWidgets.QPushButton, "pick_left_btn")
+    self.pick_left_lbl = self.findChild(QtWidgets.QLabel, "pick_left_lbl")
     self.pick_mid_btn = self.findChild(QtWidgets.QPushButton, "pick_mid_btn")
+    self.pick_mid_lbl = self.findChild(QtWidgets.QLabel, "pick_mid_lbl")
     self.pick_right_btn = self.findChild(QtWidgets.QPushButton, "pick_right_btn")
+    self.pick_right_lbl = self.findChild(QtWidgets.QLabel, "pick_right_lbl")
+
     self.run_btn = self.findChild(QtWidgets.QPushButton, "run_btn")
     self.start_txt = self.findChild(QtWidgets.QTextEdit, "start_txt")
     self.end_txt = self.findChild(QtWidgets.QTextEdit, "end_txt")
@@ -41,6 +45,7 @@ class PlayerTrackerWin(QMainWindow):
     , options=options)
     if file_path:
       self.input.set_lcap(file_path)
+      self.pick_left_lbl.setEnabled(True)
   
   def pick_mid_event(self):
     options = QtWidgets.QFileDialog.Options()
@@ -51,6 +56,7 @@ class PlayerTrackerWin(QMainWindow):
 
     if file_path:
       self.input.set_mcap(file_path)
+      self.pick_mid_lbl.setEnabled(True)
   
   def pick_right_event(self):
     options = QtWidgets.QFileDialog.Options()
@@ -60,6 +66,7 @@ class PlayerTrackerWin(QMainWindow):
     options=options)
     if file_path:
       self.input.set_rcap(file_path)
+      self.pick_right_lbl.setEnabled(True)
 
   def run_app(self):
     ret = True
