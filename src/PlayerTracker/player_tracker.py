@@ -6,8 +6,9 @@ from PlayerDetection.PlayerDetection import PlayerDetection
 from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
-from ModelField.model_field import ModelField
+from ModelField.model_field import GUI_WIDTH, ModelField
 from MultiObjectTracking.object_tracking import PlayerTracking
+from Canvas.canvas import Canvas
 import cv2 as cv
 import imutils
 import numpy as np
@@ -87,10 +88,15 @@ class PlayerTracker:
         bg_history, bg_th, True)
       self.bg_limit = bg_limit
 
+    # Initialize a canvas
+    gui_size = imutils.resize(lmrframe, width=GUI_WIDTH).shape
+    self.canvas = Canvas(gui_size)
+
     # Model Field
     self.mf_enable = mf_enable
     if self.mf_enable:
-      MF = ModelField(lmrframe, samples_per_meter, clicks=clicks)
+      MF = ModelField(lmrframe, samples_per_meter, self.canvas, 
+      clicks=clicks)
       with open('modelField.pkl', 'wb') as f:
         pickle.dump(MF, f)
         f.close()
@@ -107,7 +113,7 @@ class PlayerTracker:
       self.IMG = ImageClass()
       self.PD = PlayerDetection(MF, self.IMG, bg_img)
     # tracker 
-    self.player_tracker = PlayerTracking(MF)
+    self.player_tracker = PlayerTracking(MF, self.canvas)
     # performance
     self.frame_count = 0
     self.start_time = 0

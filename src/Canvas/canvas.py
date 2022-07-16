@@ -3,18 +3,23 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
 class Canvas:
-  def __init__(self, frame_pos=(50, 30), 
+  def __init__(self, frame_shape, frame_pos=(50, 30),
   top_view_pos=(600, 470), status_pos=(50, 500)) -> None:
 
     self.template = cv.imread("Canvas/template.png")
     self.canvas = None
 
+    self.frame_shape = frame_shape
     self.frame_pos = frame_pos
     self.top_view_pos = top_view_pos
     self.status_pos = status_pos
 
     self.font = ImageFont.truetype("Canvas/font.ttf", 50)
 
+    self.callback = None
+
+    cv.namedWindow("Trackista")
+    cv.setMouseCallback("Trackista", self.click_event)
 
 
   def _clean(self):
@@ -36,4 +41,16 @@ class Canvas:
       canvas_draw.text(self.status_pos, status, status_color, self.font)
 
     img = np.asarray(self.canvas)
-    cv.imshow("Trackista", img)
+    cv.imshow("Trackista", img)    
+
+  def set_callback(self, callback):
+    self.callback = callback
+
+  def click_event(self, event, x, y, flags=None, params=None):
+    if self.callback is not None:
+      h, w, _ = self.frame_shape
+      x_os, y_os = self.frame_pos
+      if x_os < x < (x_os+w) and y_os < y < (y_os+h):
+        x = x - x_os
+        y = y - y_os
+        self.callback(event, x, y, flags, params)

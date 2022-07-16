@@ -21,7 +21,7 @@ FRAME_OFFSET = 1
 GUI_WIDTH = 1700        
 
 class PlayerTracking(object):
-    def __init__(self,MF):
+    def __init__(self, MF, canvas):
         self.tracker = Tracker(MF)
         self.MF = MF
         # first frame to process 
@@ -35,7 +35,7 @@ class PlayerTracking(object):
                     (127, 0, 255), (127, 0, 127)]
         self.team_colors = [(255,255,255),(0,0,255),(0,255,255)]
         self.first_frame = True
-        self.canvas = Canvas()
+        self.canvas = canvas
 
     def _gui2orig(self, p):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]

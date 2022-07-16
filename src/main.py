@@ -14,11 +14,6 @@ if __name__ == "__main__":
   mcap = cv.VideoCapture(mcap_fn)
   rcap = cv.VideoCapture(rcap_fn)
 
-  mf_gui_clicks = [ (311, 110), (616, 101), (922, 103), # the three top corners
-                    (1196, 223), (619, 265), (27, 240), # the three bottom corners
-                    (195, 162), (193, 142), # the left post corners
-                    (1035, 152), (1037, 132) ] # the right post corners
-  
   fps = lcap.get(cv.CAP_PROP_FPS)
 
   start_m, start_s = start.split(':')
@@ -35,7 +30,7 @@ if __name__ == "__main__":
 
   tracker = PlayerTracker(lcap, mcap, rcap, start, end, lf,
   mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
-  samples_per_meter=3, clicks=mf_gui_clicks)
+  samples_per_meter=3)
   
   tracker.run()
 

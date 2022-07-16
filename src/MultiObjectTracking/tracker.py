@@ -1,10 +1,9 @@
 # import section 
 import numpy as np
 from MultiObjectTracking.kalmanfilter import KalmanFilter
-import pickle 
+import os 
 from MultiObjectTracking.AppearanceModel import AppearanceModel
 from MultiObjectTracking.MotionModel import MotionModel
-from ModelField.model_field import ModelField
 from MultiObjectTracking.Annotator import Annotator
 import cv2 as cv
 import copy
@@ -377,7 +376,12 @@ class Tracker(object):
 
     # Create tracks if no tracks vector found
     def InitTracks3(self,detections,frame,original_frame):
-        
+        print("mwgood ?")
+        exists = os.path.exists("./players")
+        if not exists:
+            print("laaaa")
+            os.makedirs("./players")
+
         detections = self.annotator.run(1, original_frame, detections)
         for detection in detections:
     

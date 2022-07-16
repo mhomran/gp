@@ -87,12 +87,16 @@ class PlayerTrackerWin(QMainWindow):
     if not match:
       print("please enter the start")
       ret = False
+    else:
+      self.input.set_start(self.start_txt.toPlainText())
 
     txt = self.end_txt.toPlainText()
     match = re.search(regex, txt)
     if not match:
       print("please enter the end")
       ret = False
+    else:
+      self.input.set_end(self.end_txt.toPlainText())
 
     learning_frames = self.learning_frames_txt.toPlainText()
     if not learning_frames:
@@ -105,10 +109,7 @@ class PlayerTrackerWin(QMainWindow):
         print("please choose the number of learning frames")
         ret = False
     
-    self.input.set_start(self.start_txt.toPlainText())
-    self.input.set_end(self.end_txt.toPlainText())
     self.input.set_learning_frames(learning_frames)
-
 
     if self.input.get_start() and self.input.get_end():
       start = self.input.get_start()

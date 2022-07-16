@@ -15,7 +15,7 @@ SOCCER_WIDTH_M = 108
 THICKNESS = 3  # thickness of drawings
 PIXELS_PER_METER = 10
 PLAYER_ASPECT_RATIO = 9 / 16
-GUI_WIDTH = 1200
+GUI_WIDTH = 1700
 
 
 class BoundingBox:
@@ -44,7 +44,7 @@ class GuiState(Enum):
 
 
 class ModelField:
-    def __init__(self, img, samples_per_meter, clicks=None):
+    def __init__(self, img, samples_per_meter, canvas, clicks=None):
         self.original_img = img.copy()
         self.original_img_without_BBs = img.copy()
 
@@ -68,27 +68,24 @@ class ModelField:
         self.H = None  # homography matrix
         self.gui_state = GuiState.STATE_CORNERS
         self.done = False
+        self.hint = "choose the upper left corner"
 
         if not clicks:
-            self._write_hint("choose the upper left corner")
 
-            cv.namedWindow("GUI")
-            cv.setMouseCallback('GUI', self.click_event)
+            canvas.set_callback(self.click_event)
             while True:
-                cv.imshow('GUI', self.gui_img)
+                self.gui_img = imutils.resize(self.original_img, width=GUI_WIDTH)
+                canvas.show_canvas(self.gui_img, status=self.hint)
                 if self.done:
                     cv.waitKey(2000)
-                    cv.destroyAllWindows()
                     break
                 cv.waitKey(1)
         else:
             for click in clicks:
                 self.click_event(cv.EVENT_LBUTTONDOWN, click[0], click[1])
 
-    def _write_hint(self, msg, color=(0, 0, 0)):
-        cv.rectangle(self.gui_img, (10, 2), (300, 20), (255, 255, 255), -1)
-        cv.putText(self.gui_img, msg, (15, 15),
-                   cv.FONT_HERSHEY_SIMPLEX, 0.5, color)
+    def _write_hint(self, msg):
+        self.hint = msg
 
     def _gui2orig(self, p):
         x = p[0] * self.original_img.shape[1] // self.gui_img.shape[1]
@@ -176,7 +173,7 @@ class ModelField:
 
                     cv.imwrite("modelfield.png", self.grid)
                     cv.imwrite("modelfield_BBs.png", self.original_img)
-                    self._write_hint("Done", RED_COLOR)
+                    self._write_hint("Done")
                     self.done = True
 
     def _min_dist_line_point(self, L, p):
@@ -377,6 +374,5 @@ class ModelField:
         w_in_m = w / self.px_per_m_w 
 
         return h_in_m, w_in_m
-
 
 
