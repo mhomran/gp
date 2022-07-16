@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -59,4 +61,5 @@ def main():
     tr = Trajectory(MF)
     tr.save_trajectory("stats", output_folder="trajectory")
 
-main()
+if __name__ == "__main__":
+    main()

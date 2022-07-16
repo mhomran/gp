@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -31,13 +33,16 @@ class Heatmap():
 
             ax.imshow(img)
 
-            sns.kdeplot(
-                    x=x,
-                    y=y,
-                    shade = self.shade,
-                    n_levels=self.n_levels,
-                    cmap = self.cmap
-            )
+            if len(track_df.index) > 2:
+                sns.kdeplot(
+                        x=x,
+                        y=y,
+                        shade = self.shade,
+                        n_levels=self.n_levels,
+                        cmap = self.cmap
+                )
+            else:
+                print(f"[WARNING]: not enough data for track #{track_id} to create a heatmap.")
 
             plt.xlim((0, w))
             plt.ylim((0, h))
@@ -51,5 +56,5 @@ def main():
     
     hm.save_heatmaps("stats", output_folder="heatmaps")
 
-
-main()
+if __name__ == "__main__":
+    main()

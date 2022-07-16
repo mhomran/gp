@@ -9,6 +9,7 @@ from Undistorter.undistorter import Undistorter
 from ModelField.model_field import GUI_WIDTH, ModelField
 from MultiObjectTracking.object_tracking import PlayerTracking
 from Canvas.canvas import Canvas
+from Statistics.statistics import Statistics
 import cv2 as cv
 import imutils
 import numpy as np
@@ -117,11 +118,9 @@ class PlayerTracker:
     # tracker 
     self.player_tracker = PlayerTracking(MF, self.canvas)
     
-    # performance
-    self.frame_count = 0
-    self.start_time = 0
-    self.end_time = 0
-    self.prev_second = 0
+
+    # statistics 
+    self.statistics = Statistics(MF, input_folder="stats")
 
     # Saver
     out_h, out_w = lmrframe.shape[:2]
@@ -175,14 +174,6 @@ class PlayerTracker:
     self.lframe_gpu = self.l_undistorter.undistort(self.lframe_gpu)
     self.mframe_gpu = self.m_undistorter.undistort(self.mframe_gpu)
     self.rframe_gpu = self.r_undistorter.undistort(self.rframe_gpu)
-
-  def _calculate_performance(self):
-    self.frame_count += 1
-    curr_second = int(self.frame_count // self.fps)
-    if curr_second != self.prev_second:
-      self.prev_second = curr_second
-      duration = int(self.end_time - self.start_time)
-      print(f"Second #{curr_second}")
 
   def _print_images(self):
     lframe, mframe, rframe = self._download_images_from_GPU()
@@ -246,10 +237,8 @@ class PlayerTracker:
         # 6- player tracking
         q, q_img = self.PD.getOutputPD()
         self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
-        # 7- Calculate performance for the whole pipeline
-        self._calculate_performance()
 
-        # 8- Save
+        # 7- Save
         if self.frameId < self.saved_frames_no:
           self.out_original.write(lmrframe)
 
@@ -269,6 +258,7 @@ class PlayerTracker:
             TagWriter.write(f"q/{self.frameId}.csv", q)
             TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
         else:
+          self.statistics.save_statistics()
           break
 
       else:
