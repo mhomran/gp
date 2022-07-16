@@ -29,7 +29,7 @@ class PlayerTracker:
   def __init__(self, lcap, mcap, rcap, start, end, learning_frames,
   bg_enable=False, mf_enable=True, pd_enable=True, save_pd=False, 
   samples_per_meter=3, pd_frame_no=300, clicks=None,
-  bg_history=500, bg_th=16, bg_limit=1000):
+  bg_history=500, bg_th=16, bg_limit=1000, force_mf=True):
 
     duration = lcap.get(cv.CAP_PROP_FRAME_COUNT)
     if start >= duration or end >= duration:
@@ -98,12 +98,15 @@ class PlayerTracker:
     # Model Field
     self.mf_enable = mf_enable
     if self.mf_enable:
-      MF = ModelField(lmrframe, samples_per_meter, self.canvas, 
-      clicks=clicks)
-      with open('modelField.pkl', 'wb') as f:
-        pickle.dump(MF, f)
-        f.close()
-
+      if os.path.exists('.model_field.pkl') and not force_mf:
+        with open('.model_field.pkl', 'rb') as f:
+          MF = pickle.load(f)
+      else:
+        with open('.model_field.pkl', 'wb') as f:
+          MF = ModelField(lmrframe, samples_per_meter, self.canvas, 
+          clicks=clicks)
+          pickle.dump(MF, f)
+          f.close()
     
     # Player detection
     self.pd_enable = pd_enable

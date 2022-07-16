@@ -32,6 +32,8 @@ class PlayerTrackerWin(QMainWindow):
     self.end_txt = self.findChild(QtWidgets.QTextEdit, "end_txt")
     self.learning_frames_txt = self.findChild(QtWidgets.QTextEdit, "learning_frames_txt")
 
+    self.mf_cb = self.findChild(QtWidgets.QCheckBox, "mf_cb")
+
     self.pick_left_btn.clicked.connect(self.pick_left_event)
     self.pick_mid_btn.clicked.connect(self.pick_mid_event)
     self.pick_right_btn.clicked.connect(self.pick_right_event)
@@ -116,7 +118,6 @@ class PlayerTrackerWin(QMainWindow):
         print("please choose the number of learning frames")
         ret = False
     
-    self.input.set_learning_frames(learning_frames)
 
     if self.input.get_start() and self.input.get_end():
       start = self.input.get_start()
@@ -134,6 +135,9 @@ class PlayerTrackerWin(QMainWindow):
         print("Please choose the right start and end.")
         ret = False
 
+    self.input.set_learning_frames(learning_frames)
+    self.input.set_mf(self.mf_cb.isChecked())
+
     if ret:
       self.input.set_state("success")
       self.close()
@@ -149,6 +153,7 @@ class Input:
     self.state = None
     self.start = None
     self.end = None
+    self.mf = None
 
   def validate(self) -> None:
     ret = False
@@ -187,6 +192,9 @@ class Input:
   def get_learning_frames(self):
     return self.learning_frames
 
+  def get_mf(self):
+    return self.mf
+    
   def set_state(self, state):
     self.state = state
 
@@ -198,3 +206,6 @@ class Input:
   
   def set_learning_frames(self, learning_frames):
     self.learning_frames = learning_frames
+
+  def set_mf(self, mf):
+    self.mf = mf

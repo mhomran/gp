@@ -28,7 +28,8 @@ if __name__ == "__main__":
   start = input.get_start()
   end = input.get_end()
   learning_frames = input.get_learning_frames()
+  force_mf = input.get_mf()
 
 
 
-  system(f"python3 main.py {lcap} {mcap} {rcap} {start} {end} {learning_frames}")
+  system(f"python3 main.py {lcap} {mcap} {rcap} {start} {end} {learning_frames} {force_mf}")
