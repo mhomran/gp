@@ -21,8 +21,8 @@ FRAME_OFFSET = 1
 GUI_WIDTH = 1700        
 
 class PlayerTracking(object):
-    def __init__(self, MF, canvas):
-        self.tracker = Tracker(MF, canvas)
+    def __init__(self, MF, canvas,base_path ='.'):
+        self.tracker = Tracker(MF, canvas,base_path= base_path)
         self.MF = MF
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')

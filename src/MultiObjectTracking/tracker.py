@@ -5,6 +5,7 @@ import os
 from MultiObjectTracking.AppearanceModel import AppearanceModel
 from MultiObjectTracking.MotionModel import MotionModel
 from MultiObjectTracking.Annotator import Annotator
+from MultiObjectTracking.TrackWriter import TrackWriter
 import cv2 as cv
 import copy
 import imutils
@@ -65,7 +66,7 @@ class Track(object):
         self.KF = KalmanFilter(prediction[0],prediction[1])  # KF instance to track this object
         self.skipped_frames = 0  # number of frames skipped undetected
         self.trace = [prediction]  # trace path
-
+        
         self.prediction = np.asarray(prediction)  # predicted centroids (x,y)
         self.track_bb = track_bb
 
@@ -79,7 +80,7 @@ class Track(object):
     
 #Tracker class handles all the tracks all of all the players
 class Tracker(object):
-    def __init__(self, MF, canvas):
+    def __init__(self, MF, canvas,base_path = '.'):
         
         self.max_frames_to_skip = MAX_FRAME_SKIP
         self.max_trace_length = MAX_TRACE_LEN
@@ -87,10 +88,12 @@ class Tracker(object):
         self.tracks = []
         self.p_motion = None
         self.p_color = None
+        self.base_path = base_path
         self.init_state = GuiState.STATE_HOME_GOAL_KEEPER
         self.frame_count = 0
         self.MF = MF
         self.annotator = Annotator(MF, canvas, gui_width=1700)    
+        
         self.particles = MF._get_particles()
         self.clicks = []
         self.appearance_model = AppearanceModel(APPEARANCE_MODEL_C_H, 
@@ -261,7 +264,7 @@ class Tracker(object):
                     max_detect = detection_id
                     max_p = curr_p_mot
             
-            if max_detect != -1: #and np.max(self.p_motion.T[max_detect]) < 0.97:
+            if max_detect != -1: 
                 assignment[track_id] = max_detect
                 ref_un_assigned_detects.remove(max_detect) 
                 ref_un_assigned_tracks.remove(track_id)
@@ -279,7 +282,7 @@ class Tracker(object):
                     p_col = self.p_color[track_id][detection_id]
                     p_colmo = p_mo * p_col 
                     
-            if track_id in ref_det_by_trk:# and self.tracks[track_id].skipped_frames >= 5:
+            if track_id in ref_det_by_trk:
                 
                 max_p_col = 0
                 max_p_mo = 0
@@ -371,9 +374,25 @@ class Tracker(object):
             topview_particle = self.MF.get_nearest_particle(topview_coords)
             if topview_particle:
                 self.tracks[i].top_pos = topview_particle.q
-
+        self.writeTracksToDisk(detections,assignment)
+    def initialize_csv_files(self):
+        exists = os.path.exists(self.base_path +"/stats")
+        if not exists:
             
+            os.makedirs(self.base_path +  "/stats")
 
+        for id in range(len(self.tracks)):
+            TrackWriter.initialize_file(self.base_path +  "/stats" + f'/{id}.csv')
+    def writeTracksToDisk(self,detections,assignment):
+        current_player = 0
+        for track,detection_id in zip(self.tracks,assignment):
+            if detection_id ==-1:
+                detection = [[-1],[-1]]
+            else:
+                detection = detections[detection_id]
+
+            TrackWriter.write(f'{self.base_path}/stats/{current_player}.csv',self.frame_count,track,detection)
+            current_player+=1
     # Create tracks if no tracks vector found
     def InitTracks3(self,detections,frame,original_frame):
         exists = os.path.exists("./players")
@@ -387,7 +406,7 @@ class Tracker(object):
             x,y = particle.q_img
             top_pos = particle.q
             self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
-            
+        self.initialize_csv_files()
     # Create tracks if no tracks vector found
     def InitTracks2(self,detections,frame,original_frame):
         debug = True
