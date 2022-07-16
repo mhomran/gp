@@ -28,9 +28,14 @@ if __name__ == "__main__":
 
   lf = int(lf)
 
+  mf_gui_clicks = [ (442, 156), (875, 145), (1306, 149), # the three top corners
+                    (1693, 316), (877, 376), (30, 343), # the three bottom corners
+                    (279, 233), (273, 204), # the left post corners
+                    (1468, 217), (1471, 189) ] # the right post corners
+
   tracker = PlayerTracker(lcap, mcap, rcap, start, end, lf,
   mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
-  samples_per_meter=3)
+  samples_per_meter=3, clicks=mf_gui_clicks)
   
   tracker.run()
 

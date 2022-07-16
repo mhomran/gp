@@ -79,7 +79,7 @@ class Track(object):
     
 #Tracker class handles all the tracks all of all the players
 class Tracker(object):
-    def __init__(self,MF):
+    def __init__(self, MF, canvas):
         
         self.max_frames_to_skip = MAX_FRAME_SKIP
         self.max_trace_length = MAX_TRACE_LEN
@@ -90,7 +90,7 @@ class Tracker(object):
         self.init_state = GuiState.STATE_HOME_GOAL_KEEPER
         self.frame_count = 0
         self.MF = MF
-        self.annotator = Annotator(MF, gui_width=1800)    
+        self.annotator = Annotator(MF, canvas, gui_width=1700)    
         self.particles = MF._get_particles()
         self.clicks = []
         self.appearance_model = AppearanceModel(APPEARANCE_MODEL_C_H, 
@@ -99,7 +99,7 @@ class Tracker(object):
         APPEARANCE_MODEL_V_UTH)
 
         self.motion_model = MotionModel(MOTION_MODEL_SGIMA)
-
+        self.canvas = canvas
 
 
     def  Update(self, detections, frame,original_frame):
@@ -376,10 +376,8 @@ class Tracker(object):
 
     # Create tracks if no tracks vector found
     def InitTracks3(self,detections,frame,original_frame):
-        print("mwgood ?")
         exists = os.path.exists("./players")
         if not exists:
-            print("laaaa")
             os.makedirs("./players")
 
         detections = self.annotator.run(1, original_frame, detections)

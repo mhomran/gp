@@ -13,7 +13,7 @@ class GuiState(Enum):
     STATE_GOAL = 2,
 
 class Annotator:
-    def __init__(self, mf, gui_width=1200, remove_th=10,
+    def __init__(self, mf, canvas, gui_width=1200, remove_th=10,
     skipped_frames=0) -> None:
         self.mf = mf
         self.gui_width = gui_width
@@ -24,22 +24,21 @@ class Annotator:
         self.frame_id = None
         self.remove_th = remove_th
         self.skipped_frames = skipped_frames
-
+        self.canvas = canvas
+        self.hint = ""
         
     def run(self, frame_id, img, q_img):
         self.q_img = q_img
         self.img = img
         self.frame_id = frame_id
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self._click_event)
+        self.canvas.set_callback(self._click_event)
 
         self._draw_q_img()
 
         keypress = None
         while keypress != 27:
-            cv.imshow('GUI', self.gui_img)
+            self.canvas.show_canvas(self.gui_img, status=self.hint)
             keypress = cv.waitKey(1)
-        cv.destroyAllWindows()
         return self.q_img
 
     def _draw_q_img(self):
@@ -50,14 +49,12 @@ class Annotator:
             cv.circle(temp_img, (x, y), 10, (0,0,255), -1)
 
         self.gui_img = imutils.resize(temp_img, width=self.gui_width)
+        msg = ""
+        msg += "You can add or remove a detection.\n"
+        msg += "Press esc to continue.\n"
+        msg += "Number of players: " + str(len(self.q_img)) + "\n"
 
-        msg = str(self.frame_id) + " "
-        if self.frame_id == self.skipped_frames + 1:
-            msg += "you can add or remove a detection press esc to continue"
         self._write_hint(msg)
-        
-        msg = str(len(self.q_img))
-        self._write_hint(msg, pt1=(1300, 2), pt2=(1500, 20), color=(0, 0, 255))
 
     def _gui2orig(self, p):
         x = p[0] * self.img.shape[1] // self.gui_img.shape[1]
@@ -68,10 +65,8 @@ class Annotator:
         dst = np.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2))
         return dst
 
-    def _write_hint(self, msg, color=(0, 0, 0), pt1=(10, 2), pt2=(600, 20)):
-        cv.rectangle(self.gui_img, pt1, pt2, (255, 255, 255), -1)
-        cv.putText(self.gui_img, msg, (pt1[0]+5, pt1[1]+13),
-                    cv.FONT_HERSHEY_SIMPLEX, 0.5, color)
+    def _write_hint(self, msg):
+        self.hint = msg
 
     def _click_event(self, event, x, y, flags=None, params=None):
         x, y = self._gui2orig((x, y))

@@ -112,8 +112,10 @@ class PlayerTracker:
       bg_img = cv.imread('./background.png')
       self.IMG = ImageClass()
       self.PD = PlayerDetection(MF, self.IMG, bg_img)
+    
     # tracker 
     self.player_tracker = PlayerTracking(MF, self.canvas)
+    
     # performance
     self.frame_count = 0
     self.start_time = 0

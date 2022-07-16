@@ -22,7 +22,7 @@ GUI_WIDTH = 1700
 
 class PlayerTracking(object):
     def __init__(self, MF, canvas):
-        self.tracker = Tracker(MF)
+        self.tracker = Tracker(MF, canvas)
         self.MF = MF
         # first frame to process 
         self.field_image_orginal = cv2.imread('h.png')
@@ -41,6 +41,7 @@ class PlayerTracking(object):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
         y = p[1] * self.original_frame.shape[0] // self.gui_img.shape[0]
         return (x, y)
+        
     def _write_hint(self,img, msg, color=(0, 0, 0)):
         cv.rectangle(img, (10, 2), (300, 20), (255, 255, 255), -1)
         cv.putText(img, msg, (15, 15),
