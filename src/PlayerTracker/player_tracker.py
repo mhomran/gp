@@ -1,3 +1,4 @@
+from multiprocessing.connection import wait
 import os
 
 from cv2 import CAP_PROP_POS_FRAMES
@@ -228,9 +229,6 @@ class PlayerTracker:
         
 
         self.IMG.writeTxt(lmrframe, f'{round(self.frameId/int(self.fps),2)}')
-        keyboard = cv.waitKey(1)
-        if keyboard == 'q' or keyboard == 27:
-          break
 
       if self.frameId > self.learning_frames:
         self.PD.displayIMGs
@@ -263,6 +261,7 @@ class PlayerTracker:
 
       else:
         self.canvas.show_canvas(imutils.resize(lmrframe,width = GUI_WIDTH),status='loading....')
+        cv.waitKey(1)
 
       print(f"frame #{self.frameId}")
       self.frameId += 1

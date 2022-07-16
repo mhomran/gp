@@ -223,7 +223,7 @@ Press m to modify tracks''')
         k =cv.waitKey(10)
         if k == ord('m'):
             self.modifyTracks()
-        if k == 13:
+        if k == 27:
             exit()
 
     def write_data(self):
