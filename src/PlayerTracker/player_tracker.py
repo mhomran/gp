@@ -1,7 +1,7 @@
 from multiprocessing.connection import wait
 import os
 
-from cv2 import CAP_PROP_POS_FRAMES
+from cv2 import CAP_PROP_FPS, CAP_PROP_POS_FRAMES
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
 from PlayerDetection.TagWriter import TagWriter
@@ -83,6 +83,7 @@ class PlayerTracker:
     lcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
     mcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
     rcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames-2)
+    self.fps = lcap.get(CAP_PROP_FPS)
 
     # background subtractor
     self.bg_enable = bg_enable
@@ -129,23 +130,10 @@ class PlayerTracker:
     
     # tracker 
     self.player_tracker = PlayerTracking(MF, self.canvas, base_path=output_folder)
-    
 
     # statistics 
     self.statistics = Statistics(MF, input_folder=output_folder)
 
-    # Saver
-    out_h, out_w = lmrframe.shape[:2]
-    self.fps = lcap.get(cv.CAP_PROP_FPS)
-    self.out_masked = cv.VideoWriter('masked.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
-    self.out_original = cv.VideoWriter('original.avi', cv.VideoWriter_fourcc('M','J','P','G'), self.fps, (out_w, out_h))
-  
-  def __del__(self):
-    try:
-      if self.out_masked: self.out_masked.release()
-      if self.out_original: self.out_original.release()
-    except:
-      pass
 
   def _upload_images_to_GPU(self, lframe, mframe, rframe):
     self.lframe_gpu.upload(lframe)
@@ -248,25 +236,7 @@ class PlayerTracker:
         self.player_tracker.process_step(q_img,lmrframe_masked,lmrframe)
 
         # 7- Save
-        if self.frameId < self.saved_frames_no:
-          self.out_original.write(lmrframe)
-
-          if self.save_pd and self.pd_enable:
-            if not self.save_pd_init:
-              exists = os.path.exists("q")
-              if not exists:
-                os.makedirs("q")
-              exists = os.path.exists("q_img")
-              if not exists:
-                os.makedirs("q_img")
-              self.save_pd_init = True
-            
-            self.out_masked.write(lmrframe_masked)
-            # save tags
-            q, q_img = self.PD.getOutputPD()
-            TagWriter.write(f"q/{self.frameId}.csv", q)
-            TagWriter.write(f"q_img/{self.frameId}.csv", q_img)
-        else:
+        if self.frameId > self.saved_frames_no:
           self.statistics.save_statistics()
           break
 

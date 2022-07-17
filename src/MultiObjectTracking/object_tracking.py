@@ -217,7 +217,7 @@ Press enter to continue.''')
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
         self._write_info('''Press esc to exit \n
 Press m to modify tracks''')
-        self.canvas.show_canvas(frame, top_view=field_image,info = self.info)
+        self.canvas.show_canvas(frame, top_view=field_image,info = self.info, save=True)
         
        
         k =cv.waitKey(10)
