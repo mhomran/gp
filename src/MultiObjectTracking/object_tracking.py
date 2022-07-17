@@ -2,26 +2,20 @@
 import cv2, imutils
 import cv2 as cv
 import copy
-import csv
-# from detectors import Detectors
 import numpy as np 
 from MultiObjectTracking.helper import _write_hint
 from MultiObjectTracking.tracker import Tracker
 from MultiObjectTracking.tracker import Track
 from MultiObjectTracking.ColorPlayers import ColorPlayers
 from MultiObjectTracking.ClusterPlayers import ClustringModule
-from Canvas.canvas import Canvas
-
-base_path = "D:/kollea/gradePorject/gp2/kalman_filter_multi_object_tracking/Data/VideoWithTags"
-base_path = "D:/kollea/gradePorject/last_version_gp/src/2,3part/progression"
-
-# base_path = "E:/0Senior/0_GP/detection_data1" 
 
 FRAME_OFFSET = 1
 GUI_WIDTH = 1700        
 TOP_VIEW_WIDTH = 500
 
 class PlayerTracking(object):
+    
+    # constructor
     def __init__(self, MF, canvas,base_path ='.'):
         self.tracker = Tracker(MF, canvas,base_path= base_path)
         self.MF = MF
@@ -39,17 +33,15 @@ class PlayerTracking(object):
         self.canvas = canvas
         self.hint = ''
         self.info = ''
+    
+    #remap from gui to original frame
     def _gui2orig(self, p):
         x = p[0] * self.original_frame.shape[1] // self.gui_img.shape[1]
         y = p[1] * self.original_frame.shape[0] // self.gui_img.shape[0]
         return (x, y)
         
-    def _write_hint(self,img, msg, color=(0, 0, 0)):
-        cv.rectangle(img, (10, 2), (300, 20), (255, 255, 255), -1)
-        cv.putText(img, msg, (15, 15),
-                   cv.FONT_HERSHEY_SIMPLEX, 0.25, color)  
-
-    def draw_top_view(self):
+    #draw the top view of the field
+    def _draw_top_view(self):
         field_image = copy.deepcopy(self.field_image_orginal)
         for i in range(len(self.tracker.tracks)):
             clr = self.tracker.tracks[i].team
@@ -61,6 +53,7 @@ class PlayerTracking(object):
             np.array([[self.tracker.tracks[i].top_pos[0]-x_offset],[self.tracker.tracks[i].top_pos[1]+5]]),font = 0.5)
         return field_image
 
+    #draw the tracks on the original frame
     def _draw_tracks(self):
         result_frame = copy.deepcopy(self.clean_original_frame)
         for i in range(len(self.tracker.tracks)):
@@ -78,21 +71,24 @@ class PlayerTracking(object):
             player_pos[0][0] += 20
             _write_hint(result_frame, str(self.tracker.tracks[i].track_id),player_pos )
         return result_frame
+    #change the hint box content
     def _write_hint(self, msg):
         self.hint = msg
+    #change the info box content
     def _write_info(self,msg):
         self.info = msg
-    def modifyTracks(self):
+    #start the modify tracks event loop
+    def _modify_tracks(self):
         self.done = False
         
         self.canvas.set_callback(self.clickEvent)
         self.gui_img = self._draw_tracks()
         self._write_hint("modifying tracks")
-        self._write_info('''Press c to swap two tracks \n
-Press x to correct a track \n
-Press enter to continue.''')
+        self._write_info('Press c to swap two tracks \n\
+Press x to correct a track \n\
+Press enter to continue.')
         self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-        field_image = self.draw_top_view()
+        field_image = self._draw_top_view()
         self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         self.state = 'idle'
         while True:
@@ -111,14 +107,6 @@ Press enter to continue.''')
             if k== 13:
                 self.done = True    
     
-    def repostionPlayer(self,track_id,new_point):
-        particle = self.MF.get_nearest_particle((new_point[0],new_point[1]))
-        x,y = particle.q_img
-        top_pos = particle.q
-        point = [[x],[y]]
-        track_bb = self.tracker._get_BB_as_img(point,self.masked)
-        self.tracker.tracks[track_id] = Track(point,track_id,track_bb,self.tracker.tracks[track_id].team,top_pos)
-        
     def clickEvent(self, event, x, y, flags=None, params=None):
         # checking for left mouse clicks
         if event != cv.EVENT_LBUTTONDOWN or self.state =='idle': return 
@@ -126,38 +114,50 @@ Press enter to continue.''')
 
         # if 2 click and repostion
         if len(self.clicks)==2 and self.state == 'repostion':
-            track1_id = self.closest_track(self.clicks[0])
+            track1_id = self._closest_track(self.clicks[0])
             if track1_id is not None:
-                self.repostionPlayer(track1_id,self.clicks[1])
+                self._repostion_player(track1_id,self.clicks[1])
                 
             self.clicks = []
             self._write_hint("modifying tracks")
-            self._write_info('''Press c to swap two tracks \n
-Press x to correct a track \n
-Press enter to continue.''')
+            self._write_info('Press c to swap two tracks \n\
+Press x to correct a track \n\
+Press enter to continue.')
             self.state = 'idle'
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-            field_image = self.draw_top_view()
+            field_image = self._draw_top_view()
             self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         
         # if two clicks ana swtich
         if len(self.clicks)==2 and self.state == 'swtich':
-            track1_id = self.closest_track(self.clicks[0])
-            track2_id = self.closest_track(self.clicks[1])
+            track1_id = self._closest_track(self.clicks[0])
+            track2_id = self._closest_track(self.clicks[1])
             self.clicks = []
             if track1_id is not None and track2_id is not None:
-                self.swap_tracks(track1_id,track2_id)  
+                self._swap_tracks(track1_id,track2_id)  
             self._write_hint("modifying tracks")
-            self._write_info('''Press c to swap two tracks \n 
-Press x to correct a track \n
-Press enter to continue.''')
+            self._write_info('Press c to swap two tracks \n\
+Press x to correct a track \n\
+Press enter to continue.')
             self.state = 'idle'
             self.gui_img = self._draw_tracks()
             self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-            field_image = self.draw_top_view()
+            field_image = self._draw_top_view()
             self.field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
-    def swap_tracks(self,track1_id,track2_id):
+    
+    
+    #change the player postion 
+    def _repostion_player(self,track_id,new_point):
+        particle = self.MF.get_nearest_particle((new_point[0],new_point[1]))
+        x,y = particle.q_img
+        top_pos = particle.q
+        point = [[x],[y]]
+        track_bb = self.tracker._get_BB_as_img(point,self.masked)
+        self.tracker.tracks[track_id] = Track(point,track_id,track_bb,self.tracker.tracks[track_id].team,top_pos)
+        
+    #swap two tracks
+    def _swap_tracks(self,track1_id,track2_id):
         # swap ids
         self.tracker.tracks[track1_id].track_id = track2_id
         self.tracker.tracks[track2_id].track_id = track1_id
@@ -172,8 +172,8 @@ Press enter to continue.''')
         self.tracker.tracks[track2_id] = self.tracker.tracks[track1_id]  
         self.tracker.tracks[track1_id] = temp
         
-  
-    def closest_track(self,click):
+    # get the nearest track to a click 
+    def _closest_track(self,click):
         min_dist = 1000
         selected_track =  None
         click = np.array([[click[0]],[click[1]]])
@@ -191,6 +191,13 @@ Press enter to continue.''')
         return dist
 
     def process_step(self,centers,masked,original_frame):
+        """
+        Description : This function process the current frame using the detection from the detection module
+        Input: 
+        - centers : list of detections
+        - masked : current masked frame
+        - original frame : current original frame
+        """
         if (len(centers) == 0 ):return 
         
         # Track object using Kalman Filter
@@ -212,7 +219,7 @@ Press enter to continue.''')
             for i,_ in enumerate(self.tracker.tracks):
                 self.tracker.tracks[i].team  = teams[i]
         # small field image
-        field_image = self.draw_top_view()
+        field_image = self._draw_top_view()
         field_image  = imutils.resize(field_image, TOP_VIEW_WIDTH)
         frame = imutils.resize(original_frame, width=GUI_WIDTH)
         self._write_info('''Press esc to exit \n
@@ -222,18 +229,9 @@ Press m to modify tracks''')
        
         k =cv.waitKey(10)
         if k == ord('m'):
-            self.modifyTracks()
+            self._modify_tracks()
         if k == 27:
             exit()
-
-    def write_data(self):
-
-        for i,path in enumerate(self.paths):
-            with open(f'countours/{i}player.csv','w') as out:
-                csv_out=csv.writer(out)
-                
-                for row in path:
-                    csv_out.writerow(row)
 
 
 

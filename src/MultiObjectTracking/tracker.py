@@ -35,19 +35,6 @@ APPEARANCE_MODEL_V_UTH = 1
 
 RED_COLOR = (0, 0, 255)
 BLUE_COLOR = (255, 0, 0)
-CLICKS  =   [(907, 427,0), #home goal keeper
-            (1292, 706,0), (1203, 548,0), (1267, 476,0), (1301, 414,0), (1398, 340,0), (1483, 403,0), (1547, 521,0), (1705, 479,0), (1710, 372,0), (1654, 327,0),
-            #home team
-            (2815, 407,1),#away goal keeper
-            (2264, 590,1), (2201, 434,1), (2261, 383,1), (2110, 320,1), (2074, 421,1), (1986, 396,1), (1912, 450,1), (1723, 574,1), (1708, 418,1), (1801, 338,1),
-            #away team
-            (1837, 481,2),]#refree
-
-CLICKS = [(858, 425,0),
-(1365, 666,0), (1305, 532,0), (1321, 476,0), (1358, 407,0), (1436, 343,0), (1614, 414,0), (1728, 539,0), (1779, 334,0), (2068, 461,0), (2008, 416,0),
-(2793, 412,1),
-(2315, 603,1), (2350, 452,1), (2304, 374,1), (2119, 309,1), (2137, 427,1), (1983, 394,1), (1832, 441,1), (1672, 320,1), (1472, 434,1), (1467, 592,1),
-(1699, 443,2)]
 
 class GuiState(Enum):
     STATE_HOME_GOAL_KEEPER = 1,
@@ -106,10 +93,17 @@ class Tracker(object):
 
 
     def  Update(self, detections, frame,original_frame):
-        
+        """
+        Description: update the internal tracker state and tracks locations 
+
+        Input:
+            - detections : array of detections 
+            - frame : The current masked frame
+            - original_frame : The current original frame
+        """        
         if(len(self.tracks) == 0):  
             self.first_frame = frame
-            self.InitTracks3(detections, frame,original_frame)
+            self._init_tracks(detections,original_frame)
             return
 
         # initialing motion model and appearance model 
@@ -121,9 +115,9 @@ class Tracker(object):
         trk_by_dtn = {}
         self.frame_count +=1
         #reformate the detections data
-        new_detections = np.zeros((len(detections),2,1))
         for i in range(len(detections)):
             detections[i] =np.array([[detections[i][0]],[detections[i][1]]])
+
         for n, track in enumerate(self.tracks):
             # get prediction
             predicted_state = track.KF.predict()
@@ -374,8 +368,10 @@ class Tracker(object):
             topview_particle = self.MF.get_nearest_particle(topview_coords)
             if topview_particle:
                 self.tracks[i].top_pos = topview_particle.q
-        self.writeTracksToDisk(detections,assignment)
-    def initialize_csv_files(self):
+        self._write_tracks_to_disk(detections,assignment)
+    
+    
+    def _initialize_csv_files(self):
         exists = os.path.exists(self.base_path +"/stats")
         if not exists:
             
@@ -383,7 +379,8 @@ class Tracker(object):
 
         for id in range(len(self.tracks)):
             TrackWriter.initialize_file(self.base_path +  "/stats" + f'/{id}.csv')
-    def writeTracksToDisk(self,detections,assignment):
+
+    def _write_tracks_to_disk(self,detections,assignment):
         current_player = 0
         for track,detection_id in zip(self.tracks,assignment):
             if detection_id ==-1:
@@ -393,11 +390,14 @@ class Tracker(object):
 
             TrackWriter.write(f'{self.base_path}/stats/{current_player}.csv',self.frame_count,track,detection)
             current_player+=1
+
+
+
     # Create tracks if no tracks vector found
-    def InitTracks3(self,detections,frame,original_frame):
-        exists = os.path.exists("./players")
+    def _init_tracks(self,detections,original_frame):
+        exists = os.path.exists("./.players")
         if not exists:
-            os.makedirs("./players")
+            os.makedirs("./.players")
 
         detections = self.annotator.run(1, original_frame, detections)
         for detection in detections:
@@ -405,101 +405,21 @@ class Tracker(object):
             particle = self.MF.get_nearest_particle((detection[0],detection[1]))
             x,y = particle.q_img
             top_pos = particle.q
-            self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
-        self.initialize_csv_files()
-    # Create tracks if no tracks vector found
-    def InitTracks2(self,detections,frame,original_frame):
-        debug = True
-        if debug:
-            for click in CLICKS:
-                
-                particle = self.MF.get_nearest_particle((click[0],click[1]))
-                x,y = particle.q_img
-                top_pos = particle.q
-                self.makeTrack([[x],[y]],self.first_frame,click[2],top_pos)
+            self._make_track([[x],[y]],self.first_frame,0,top_pos)
+        self._initialize_csv_files()
 
-        if debug:return    
-        self.gui_img = original_frame.copy()
-        self.gui_img = imutils.resize(self.gui_img, width=GUI_WIDTH)
-        self.done = False
-        self._write_hint("choose the Home goal keeper")
 
-        cv.namedWindow("GUI")
-        cv.setMouseCallback('GUI', self.clickEvent)
-        while True:
-            cv.imshow('GUI', self.gui_img)
-            if self.done:
-                cv.waitKey(2000)
-                cv.destroyAllWindows()
-                break
-            cv.waitKey(1)
     def _write_hint(self, msg, color=(0, 0, 0)):
         cv.rectangle(self.gui_img, (10, 2), (300, 20), (255, 255, 255), -1)
         cv.putText(self.gui_img, msg, (15, 15),
-                   cv.FONT_HERSHEY_SIMPLEX, 0.5, color)  
-    def makeTrack(self,point,frame,team,top_pos):
+                   cv.FONT_HERSHEY_SIMPLEX, 0.5, color) 
+
+    def _make_track(self,point,frame,team,top_pos):
         track_bb = self._get_BB_as_img(point,frame)
-        cv.imwrite(f'players/{self.next_trackId}.bmp',track_bb)
+        cv.imwrite(f'./.players/{self.next_trackId}.bmp',track_bb)
         track = Track(point,self.next_trackId,track_bb,team,top_pos)
         self.next_trackId +=1 
         self.tracks.append(track)
-
-    def clickEvent(self, event, x, y, flags=None, params=None):
-        # checking for left mouse clicks
-        if event != cv.EVENT_LBUTTONDOWN : return 
-        self.clicks.append(self._gui2orig((x, y)))
-        particle = self.MF.get_nearest_particle((self.clicks[-1][0],self.clicks[-1][1]))
-        x,y = particle.q_img
-        top_pos = particle.q
-        if self.init_state == GuiState.STATE_HOME_GOAL_KEEPER:
-            self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
-            self.init_state = GuiState.STATE_HOME
-            self._write_hint("choose the Home team")
-            print(self.clicks)
-            self.clicks = []
-        
-        
-        elif self.init_state == GuiState.STATE_HOME:
-            self.makeTrack([[x],[y]],self.first_frame,0,top_pos)
-            
-            if len(self.clicks) < 10:
-                curr_click = self.clicks[-1]
-                self.gui_img = cv.circle(
-                    self.gui_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
-            else:
-                self.init_state = GuiState.STATE_AWAY_GOAL_KEEPER
-                self._write_hint("choose the Away team goal keeper")
-                print(self.clicks)
-                self.clicks = []
-
-        
-        elif self.init_state == GuiState.STATE_AWAY_GOAL_KEEPER:
-
-            self.makeTrack([[x],[y]],self.first_frame,1,top_pos)
-            self.init_state = GuiState.STATE_AWAY
-            self._write_hint("choose the Away team")
-            print(self.clicks)
-            self.clicks = []
-        
-
-        elif self.init_state == GuiState.STATE_AWAY:
-            self.makeTrack([[x],[y]],self.first_frame,1,top_pos)
-            if len(self.clicks) < 10:
-                curr_click = self.clicks[-1]
-                self.gui_img = cv.circle(
-                    self.gui_img, curr_click, THICKNESS, RED_COLOR, cv.FILLED)
-            else:
-                self.init_state = GuiState.STATE_REF
-                self._write_hint('pick the refree')
-                print(self.clicks)
-                self.clicks = []
-        elif self.init_state == GuiState.STATE_REF:
-                self.makeTrack([[x],[y]],self.first_frame,2,top_pos)
-                self.done = True
-                print(self.clicks)
-                self.clicks = []
-                self.init_state = GuiState.STATE_END
-
 
     def _get_BB_as_img(self, coords, frame):
         coords = (coords[0][0], coords[1][0])
