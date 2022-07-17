@@ -127,7 +127,7 @@ class ModelField:
                                         [0, self.grid_res_h]])
                     self.lH = cv.getPerspectiveTransform(pts2, pts1)
                     self.lH_inv = np.linalg.inv(self.lH)
-                    A, B, C, D = pts1
+                    A, B, C, D = np.int32(pts1)
                     self.lL_horizon = self._calculate_horizon(A, B, C, D)
                     
                     pts1 = np.float32(self.clicks[1:3] + self.clicks[3:5])
@@ -137,7 +137,7 @@ class ModelField:
                     self.rH = cv.getPerspectiveTransform(pts2, pts1)
                     self.rH_inv = np.linalg.inv(self.rH)
 
-                    A, B, C, D = pts1
+                    A, B, C, D = np.int32(pts1)
                     self.rL_horizon = self._calculate_horizon(A, B, C, D)
                     
                     self._write_hint("choose the bottom of the left post")
@@ -199,26 +199,52 @@ class ModelField:
         return dst
 
     def _get_intersect(self, A, B, C, D):
-        # Description: get the intersection between the two lines
-        # the first line passes through A, B. Its slope a, constant b.
-        # the second line passes through C, D. Its slope c, constant d.
+        """
+        Description: get the intersection between the two lines
+        the first line passes through A, B. Its slope a, constant b.
+        the second line passes through C, D. Its slope c, constant d.
+        """
 
-        # y = ax + b
-        a = (A[1] - B[1])/(A[0] - B[0])
-        b = A[1] - a * A[0]
+        result = None
+        ret = False
 
-        # y = cx + d
-        c = (C[1] - D[1])/(C[0] - D[0])
-        d = C[1] - c * C[0]
+        v1, v2 = A[0] == B[0], C[0] == D[0]
 
-        # same slope (no intersection) ?
-        if a == c: return False, None
+        if v1 and v2: 
+            ret, result = False, None
+        elif v1:
+            # y = cx + d
+            c = (C[1] - D[1])/(C[0] - D[0])
+            d = C[1] - c * C[0]
+            x = A[0]
+            y = c * x + d
+            ret, result = True, (x, y)
+        elif v2:
+            # y = ax + b
+            a = (A[1] - B[1])/(A[0] - B[0])
+            b = A[1] - a * A[0]
+            x = C[0]
+            y = a * x + b
+            ret, result = True, (x, y)
+        else:
+            # y = ax + b
+            a = (A[1] - B[1])/(A[0] - B[0])
+            b = A[1] - a * A[0]
 
-        # intersection (solve for x)
-        x = (d - b) / (a - c)
-        y = (a * x + b)
+            # y = cx + d
+            c = (C[1] - D[1])/(C[0] - D[0])
+            d = C[1] - c * C[0]
 
-        return True, (x, y)
+            # same slope (no intersection) ?
+            if a == c: 
+                ret, result = False, None
+            else:
+                # intersection (solve for x)
+                x = (d - b) / (a - c)
+                y = (a * x + b)
+                ret, result = True, (x, y)
+
+        return ret, result
 
     def _calculate_horizon(self, A, B, C, D):
         # Description: given the top left A, top right B,
