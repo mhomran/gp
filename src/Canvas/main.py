@@ -8,15 +8,17 @@ def main():
   frame_cap = cv.VideoCapture(frame_fn)
 
   top_view = cv.imread("h.png")
-  top_view = imutils.resize(top_view, 650)
+  top_view = imutils.resize(top_view, 500)
 
-  canvas = Canvas()
+  _, frame = frame_cap.read()
+  frame = imutils.resize(frame, width=1700)
+
+  canvas = Canvas(frame.shape, top_view.shape)
   while True:
     _, frame = frame_cap.read()
     frame = imutils.resize(frame, width=1700)
     
-    canvas.show_canvas(frame, top_view=top_view, 
-    status="Trackista", status_color=(255, 255, 255))
+    canvas.show_canvas(frame, top_view=top_view, status="Trackista")
     if (cv.waitKey(1) == 27):
       break
   

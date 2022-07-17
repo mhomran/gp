@@ -6,6 +6,7 @@ import seaborn as sns
 from tqdm import tqdm
 import numpy as np
 import pickle 
+import os
 
 class Trajectory():
     def __init__(self, MF) -> None:
@@ -19,6 +20,8 @@ class Trajectory():
         speed_th = 7
 
         for track_id in tqdm (range (22), desc="Loading..."):
+            if not os.path.exists(f"{input_folder}/{track_id}.csv"):
+                continue
             df = pd.read_csv(f"{input_folder}/{track_id}.csv")
             track_df = df[::fps]
 

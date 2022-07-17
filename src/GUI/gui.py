@@ -26,6 +26,8 @@ class PlayerTrackerWin(QMainWindow):
     self.pick_mid_lbl = self.findChild(QtWidgets.QLabel, "pick_mid_lbl")
     self.pick_right_btn = self.findChild(QtWidgets.QPushButton, "pick_right_btn")
     self.pick_right_lbl = self.findChild(QtWidgets.QLabel, "pick_right_lbl")
+    self.output_btn = self.findChild(QtWidgets.QPushButton, "output_btn")
+    self.output_lbl = self.findChild(QtWidgets.QLabel, "output_lbl")
 
     self.run_btn = self.findChild(QtWidgets.QPushButton, "run_btn")
     self.start_txt = self.findChild(QtWidgets.QTextEdit, "start_txt")
@@ -38,6 +40,7 @@ class PlayerTrackerWin(QMainWindow):
     self.pick_mid_btn.clicked.connect(self.pick_mid_event)
     self.pick_right_btn.clicked.connect(self.pick_right_event)
     self.run_btn.clicked.connect(self.run_app)
+    self.output_btn.clicked.connect(self.output_event)
 
   def pick_left_event(self):
     options = QtWidgets.QFileDialog.Options()
@@ -70,6 +73,17 @@ class PlayerTrackerWin(QMainWindow):
       self.input.set_rcap(file_path)
       self.pick_right_lbl.setEnabled(True)
 
+  def output_event(self):
+    options = QtWidgets.QFileDialog.Options()
+    options |= QtWidgets.QFileDialog.DontUseNativeDialog
+    folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, 
+    'Pick the output folder', "../data" , 
+    options=options)
+
+    if folder_path:
+      self.input.set_output(folder_path)
+      self.output_lbl.setEnabled(True)
+
   def run_app(self):
     ret = True
     txt = None
@@ -87,6 +101,10 @@ class PlayerTrackerWin(QMainWindow):
 
     if not self.input.get_rcap():
       print("please choose the right feed")
+      ret = False
+
+    if not self.input.get_output():
+      print("please choose the output folder")
       ret = False
 
     regex = "^([1-5][0-9]|0?[0-9]):([1-5][0-9]|0?[0-9])$"
@@ -195,6 +213,9 @@ class Input:
   def get_mf(self):
     return self.mf
     
+  def get_output(self):
+    return self.output
+
   def set_state(self, state):
     self.state = state
 
@@ -209,3 +230,6 @@ class Input:
 
   def set_mf(self, mf):
     self.mf = mf
+
+  def set_output(self, output):
+    self.output = output

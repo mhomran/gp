@@ -4,7 +4,7 @@ import numpy as np
 
 class Canvas:
   def __init__(self, frame_shape,top_view_shape, frame_pos=(50, 30),
-  top_view_pos=(680, 555), status_pos=(60, 510),info_pos=(65,620)) -> None:
+  top_view_pos=(680, 555), status_pos=(60, 490),info_pos=(65,620)) -> None:
 
     self.template = cv.imread("Canvas/template.png")
     self.canvas = None
@@ -14,7 +14,7 @@ class Canvas:
     self.top_view_shape = top_view_shape
     self.top_view_pos = top_view_pos
     self.status_pos = status_pos
-    self.status_bg_bb = [50, 500, 650, 560]
+    self.status_bg_bb = [50, 480, 800, 540]
     self.status_bg_rad = 5
     self.info_pos = info_pos
     self.info_bg_bb = [50, 600, 600, 860]

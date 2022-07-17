@@ -12,8 +12,8 @@ class Statistics:
     input_folder = self.input_folder
     if not os.path.exists(f"{input_folder}/heatmaps"):
       os.makedirs(f"{input_folder}/heatmaps")
-    self.heatmap.save_heatmaps(input_folder, f"{input_folder}/heatmaps")
+    self.heatmap.save_heatmaps(f"{input_folder}/stats", f"{input_folder}/heatmaps")
     
     if not os.path.exists(f"{input_folder}/trajectory"):
       os.makedirs(f"{input_folder}/trajectory")
-    self.trajectory.save_trajectory(input_folder, f"{input_folder}/trajectory")
+    self.trajectory.save_trajectory(f"{input_folder}/stats", f"{input_folder}/trajectory")

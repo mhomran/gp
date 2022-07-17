@@ -77,6 +77,9 @@ class ModelField:
                 self.gui_img = imutils.resize(self.original_img, width=GUI_WIDTH)
                 canvas.show_canvas(self.gui_img, status=self.hint, info="Press esc to exit.")
                 if self.done:
+                    cv.waitKey(1)
+                    self.final_input()
+                    canvas.show_canvas(self.gui_img, status=self.hint, info="Press esc to exit.")
                     cv.waitKey(2000)
                     break
                 if cv.waitKey(1) == 27:
@@ -152,31 +155,33 @@ class ModelField:
                         self._write_hint("choose the top of the right post")
 
                 elif len(self.clicks) == 4:
-                    u_bottom, u_top = self.clicks[0:2]
-                    cv.line(self.original_img, u_bottom,
-                            u_top, RED_COLOR, THICKNESS)
-
-                    # equation (3.3)
-                    dst_u_bt = self._euclidean_distance(u_bottom, u_top)
-                    dst_u_L = self._min_dist_line_point(self.lL_horizon, u_bottom)
-                    self.lhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
-                    
-                    u_bottom, u_top = self.clicks[2:]
-                    cv.line(self.original_img, u_bottom,
-                            u_top, RED_COLOR, THICKNESS)
-
-                    # equation (3.3)
-                    dst_u_bt = self._euclidean_distance(u_bottom, u_top)
-                    dst_u_L = self._min_dist_line_point(self.rL_horizon, u_bottom)
-                    self.rhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
-
-                    self.s, self.s_by_q = self._construct_modelfield_img()
-
-                    cv.imwrite("modelfield.png", self.grid)
-                    cv.imwrite("modelfield_BBs.png", self.original_img)
-                    self._write_hint("Done")
+                    self._write_hint("Please wait till modelfield is constructed.")
                     self.done = True
+    
+    def final_input(self):
+        u_bottom, u_top = self.clicks[0:2]
+        cv.line(self.original_img, u_bottom,
+                u_top, RED_COLOR, THICKNESS)
 
+        # equation (3.3)
+        dst_u_bt = self._euclidean_distance(u_bottom, u_top)
+        dst_u_L = self._min_dist_line_point(self.lL_horizon, u_bottom)
+        self.lhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
+        
+        u_bottom, u_top = self.clicks[2:]
+        cv.line(self.original_img, u_bottom,
+                u_top, RED_COLOR, THICKNESS)
+
+        # equation (3.3)
+        dst_u_bt = self._euclidean_distance(u_bottom, u_top)
+        dst_u_L = self._min_dist_line_point(self.rL_horizon, u_bottom)
+        self.rhcam = (dst_u_L * T_GOAL_CM) / dst_u_bt
+
+        self.s, self.s_by_q = self._construct_modelfield_img()
+
+        cv.imwrite("modelfield.png", self.grid)
+        cv.imwrite("modelfield_BBs.png", self.original_img)
+        self._write_hint("Success.")
     def _min_dist_line_point(self, L, p):
         # Description: get the minimum distance between a point and a line.
         # Input:

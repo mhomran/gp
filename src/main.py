@@ -7,11 +7,11 @@ if __name__ == "__main__":
 
   np.seterr(divide='ignore', invalid='ignore')
   
-  if len(sys.argv) != 8: 
+  if len(sys.argv) != 9: 
     print("[DEV] unsuffcient commands from GUI")
     sys.exit(-1)
 
-  _, lcap_fn, mcap_fn, rcap_fn, start, end, lf, force_mf = sys.argv
+  _, lcap_fn, mcap_fn, rcap_fn, start, end, lf, force_mf, out = sys.argv
   lcap = cv.VideoCapture(lcap_fn)
   mcap = cv.VideoCapture(mcap_fn)
   rcap = cv.VideoCapture(rcap_fn)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
   tracker = PlayerTracker(lcap, mcap, rcap, start, end, lf,
   mf_enable=True, pd_enable=True, bg_enable=False, save_pd=True,
-  samples_per_meter=3, force_mf=force_mf)
+  samples_per_meter=3, force_mf=force_mf, output_folder=out)
   
   tracker.run()
 

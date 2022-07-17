@@ -4,6 +4,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
+import os
 
 class Heatmap():
     def __init__(self, 
@@ -23,6 +24,8 @@ class Heatmap():
         fps = 25
 
         for track_id in tqdm (range (22), desc="Loading..."):
+            if not os.path.exists(f"{input_folder}/{track_id}.csv"):
+                continue
             df = pd.read_csv(f"{input_folder}/{track_id}.csv")
             track_df = df[::fps]
 

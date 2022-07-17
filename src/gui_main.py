@@ -29,7 +29,7 @@ if __name__ == "__main__":
   end = input.get_end()
   learning_frames = input.get_learning_frames()
   force_mf = input.get_mf()
+  out = input.get_output()
 
 
-
-  system(f"python3 main.py {lcap} {mcap} {rcap} {start} {end} {learning_frames} {force_mf}")
+  system(f"python3 main.py {lcap} {mcap} {rcap} {start} {end} {learning_frames} {force_mf} {out}")

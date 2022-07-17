@@ -29,7 +29,8 @@ class PlayerTracker:
   def __init__(self, lcap, mcap, rcap, start, end, learning_frames,
   bg_enable=False, mf_enable=True, pd_enable=True, save_pd=False, 
   samples_per_meter=3, pd_frame_no=300, clicks=None,
-  bg_history=500, bg_th=16, bg_limit=1000, force_mf=True):
+  bg_history=500, bg_th=16, bg_limit=1000, force_mf=True,
+  output_folder='.'):
 
     duration = lcap.get(cv.CAP_PROP_FRAME_COUNT)
     if start >= duration or end >= duration:
@@ -91,9 +92,9 @@ class PlayerTracker:
       self.bg_limit = bg_limit
 
     # Initialize a canvas
-    top_veiw_shape =imutils.resize(cv.imread('h.png'), 650).shape
+    top_view_shape =imutils.resize(cv.imread('h.png'), 500).shape
     gui_size = imutils.resize(lmrframe, width=GUI_WIDTH).shape
-    self.canvas = Canvas(gui_size,top_view_shape=top_veiw_shape)
+    self.canvas = Canvas(gui_size,top_view_shape=top_view_shape)
 
     # Model Field
     self.mf_enable = mf_enable
@@ -127,11 +128,11 @@ class PlayerTracker:
       self.PD = PlayerDetection(MF, self.IMG, bg_img)
     
     # tracker 
-    self.player_tracker = PlayerTracking(MF, self.canvas)
+    self.player_tracker = PlayerTracking(MF, self.canvas, base_path=output_folder)
     
 
     # statistics 
-    self.statistics = Statistics(MF, input_folder="stats")
+    self.statistics = Statistics(MF, input_folder=output_folder)
 
     # Saver
     out_h, out_w = lmrframe.shape[:2]
