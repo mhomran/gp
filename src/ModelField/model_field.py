@@ -179,8 +179,6 @@ class ModelField:
 
         self.s, self.s_by_q = self._construct_modelfield_img()
 
-        cv.imwrite("modelfield.png", self.grid)
-        cv.imwrite("modelfield_BBs.png", self.original_img)
         self._write_hint("Success.")
     def _min_dist_line_point(self, L, p):
         # Description: get the minimum distance between a point and a line.

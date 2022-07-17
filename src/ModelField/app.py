@@ -1,3 +1,8 @@
+import sys
+sys.path.append(sys.path[0]+"/../")
+
+print(sys.path)
+
 import cv2 as cv
 from Canvas.canvas import Canvas
 from model_field import ModelField
