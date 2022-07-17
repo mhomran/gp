@@ -7,8 +7,13 @@ class ClustringModule:
     def __init__(self):
         pass
     def getTeamsColors(self):
+        """
+        Description : returns the initail guess for each player's team
+        Output: 
+        - colors : list of players' colors
+        """
         dominanteColors = []
-        imgs = self.load_images_from_folder('./players')
+        imgs = self._load_images_from_folder('./.players')
         for img in imgs:
             
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -30,9 +35,10 @@ class ClustringModule:
             kmeans = KMeans(n_clusters=2, random_state=0).fit(dominanteColors)
         except:
                 return np.zeros(len(imgs),dtype = int)
-        return kmeans.labels_
+        colors = kmeans.labels_
+        return colors
     
-    def load_images_from_folder(self,folder):
+    def _load_images_from_folder(self,folder):
         images = []
         for filename in os.listdir(folder):
             img = cv2.imread(os.path.join(folder,filename))

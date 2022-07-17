@@ -27,6 +27,18 @@ class ColorPlayers:
         self.hint = ""
         self.info = ''
     def run(self, frame_id, img, top_pos,colors):
+        """
+        Descritption : this function take the user input to correct the players' teams
+         
+        Input :
+        - frame_id : int
+        - img : matrix top field frame
+        - colors : int [] current players' teams
+        - top_pos : list of tupls (int,int) players' positions from top view
+        Output:
+        - colors : int [] players' teams after user correction
+
+        """
         self.top_pos = top_pos
         self.img = img
         self.frame_id = frame_id

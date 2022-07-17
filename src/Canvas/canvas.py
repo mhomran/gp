@@ -20,7 +20,7 @@ class Canvas:
     self.info_bg_bb = [50, 600, 600, 860]
     self.info_bg_rad = 5
     self.font = ImageFont.truetype("Canvas/font.ttf", 40)
-    self.infofont = ImageFont.truetype("Canvas/font.ttf", 20)
+    self.info_font = ImageFont.truetype("Canvas/font.ttf", 20)
     self.callback = None
     self.top_view_callback = None
     cv.namedWindow("Trackista")
@@ -50,7 +50,7 @@ class Canvas:
       canvas_draw = ImageDraw.Draw(self.canvas)
       canvas_draw.rounded_rectangle(self.info_bg_bb, self.info_bg_rad,
       (0, 0, 0))
-      canvas_draw.text(self.info_pos, info, info_color, self.infofont)
+      canvas_draw.text(self.info_pos, info, info_color, self.info_font)
       
     img = np.asarray(self.canvas)
     cv.imshow("Trackista", img)    
