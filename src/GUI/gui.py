@@ -132,6 +132,8 @@ class PlayerTrackerWin(QMainWindow):
     else:
       try:
         learning_frames = int(learning_frames)
+        if learning_frames < 0:
+          raise 
       except:
         print("please choose the number of learning frames")
         ret = False
@@ -172,6 +174,7 @@ class Input:
     self.start = None
     self.end = None
     self.mf = None
+    self.output = None
 
   def validate(self) -> None:
     ret = False

@@ -24,9 +24,9 @@ LOW_TH = 30
 HIGH_TH = 200
 
 class PlayerDetection:
-    def __init__(self, MF, IMG, BGIMG=None):
+    def __init__(self, MF, IMG, BGIMG=None,learning_frames = 500):
         self.backSub = cv.createBackgroundSubtractorMOG2(
-            BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
+            learning_frames, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)
         self.contours = []
         self.particles = MF._get_particles()
@@ -42,7 +42,7 @@ class PlayerDetection:
         self.contourFrame = None
         self.outputPD = None
         self.BGIMG = BGIMG
-
+        
         self.morph_filter = cv.cuda.createMorphologyFilter(cv.MORPH_OPEN, cv.CV_8UC1, self.kernel)
         self.canny_filter = cv.cuda.createCannyEdgeDetector(LOW_TH, HIGH_TH)
 
@@ -52,17 +52,9 @@ class PlayerDetection:
         self.frame = frame
         # will be removed
         self.setFramesForDisplay()
-
+        
         fgMask = self.backSub.apply(frame)
-        # if (frameId > 80):
         return fgMask
-
-        subtract = cv.absdiff(frame, self.BGIMG)
-        img_gray = cv.cvtColor(subtract, cv.COLOR_BGR2GRAY)
-        _, subtract = cv.threshold(
-            img_gray, BG_THRESHOLD_LOWER, BG_THRESHOLD_HIGHER, cv.THRESH_BINARY)
-
-        return subtract
 
     def setFramesForDisplay(self):
         self.MFAfter = self.frame.copy()

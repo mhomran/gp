@@ -32,7 +32,7 @@ class PlayerTracker:
     if start >= duration or end >= duration:
       raise ValueError("[FATAL] the start or end is longer than the videos durations.")
 
-    if start <= learning_frames:
+    if start < learning_frames:
       raise ValueError("[FATAL] the start is not sufficient for GMM learning.")
 
     self.lcap = lcap
@@ -121,7 +121,7 @@ class PlayerTracker:
     self.pd_frame_no = pd_frame_no
     if self.pd_enable and self.mf_enable:
       self.IMG = ImageClass()
-      self.PD = PlayerDetection(MF, self.IMG)
+      self.PD = PlayerDetection(MF, self.IMG,learning_frames)
     
     # tracker 
     self.player_tracker = PlayerTracking(MF, self.canvas, base_path=output_folder)
