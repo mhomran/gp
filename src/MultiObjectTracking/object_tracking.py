@@ -210,7 +210,7 @@ Press enter to continue.')
         # Use various colors to indicate different track_id
         original_frame = self._draw_tracks()
         self.original_frame = original_frame
-        if self.first_frame:
+        if self.first_frame and len(self.tracker.tracks):
             self.first_frame =False
             chooseColors = ColorPlayers(imutils.resize(original_frame, width=GUI_WIDTH),self.canvas)
             teams = chooseColors.run(0,field_image,
