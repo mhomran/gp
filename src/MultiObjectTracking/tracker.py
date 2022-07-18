@@ -81,6 +81,8 @@ class Tracker(object):
         self.MF = MF
         self.annotator = Annotator(MF, canvas, gui_width=1700)    
         
+        self.csv_files_initialized = False
+        
         self.particles = MF._get_particles()
         self.clicks = []
         self.appearance_model = AppearanceModel(APPEARANCE_MODEL_C_H, 
@@ -362,12 +364,16 @@ class Tracker(object):
             os.makedirs(self.base_path +  "/stats")
 
         for id in range(len(self.tracks)):
+            print(id)
             if self.tracks[id].team == 2:
                 continue
             TrackWriter.initialize_file(self.base_path +  "/stats" + f'/{id}.csv')
 
     def _write_tracks_to_disk(self,detections,assignment):
-        current_player = 0
+
+        if not self.csv_files_initialized:
+            self._initialize_csv_files()
+            self.csv_files_initialized = True
         for track,detection_id in zip(self.tracks,assignment):
             if track.team == 2:
                 continue
@@ -376,8 +382,8 @@ class Tracker(object):
             else:
                 detection = detections[detection_id]
 
-            TrackWriter.write(f'{self.base_path}/stats/{current_player}.csv',self.frame_count,track,detection)
-            current_player+=1
+            TrackWriter.write(f'{self.base_path}/stats/{track.track_id}.csv',self.frame_count,track,detection)
+
 
 
 
@@ -394,7 +400,7 @@ class Tracker(object):
             x,y = particle.q_img
             top_pos = particle.q
             self._make_track([[x],[y]],self.first_frame,0,top_pos)
-        self._initialize_csv_files()
+        
 
 
     def _write_hint(self, msg, color=(0, 0, 0)):
