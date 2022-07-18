@@ -362,11 +362,15 @@ class Tracker(object):
             os.makedirs(self.base_path +  "/stats")
 
         for id in range(len(self.tracks)):
+            if self.tracks[id].team == 2:
+                continue
             TrackWriter.initialize_file(self.base_path +  "/stats" + f'/{id}.csv')
 
     def _write_tracks_to_disk(self,detections,assignment):
         current_player = 0
         for track,detection_id in zip(self.tracks,assignment):
+            if track.team == 2:
+                continue
             if detection_id ==-1:
                 detection = [[-1],[-1]]
             else:

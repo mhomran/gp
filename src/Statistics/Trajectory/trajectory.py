@@ -23,7 +23,7 @@ class Trajectory():
         fps = 25
         speed_th = 7
 
-        for track_id in tqdm (range (22), desc="Loading..."):
+        for track_id in tqdm (range (23), desc="Loading..."):
             if not os.path.exists(f"{input_folder}/{track_id}.csv"):
                 continue
             df = pd.read_csv(f"{input_folder}/{track_id}.csv")
@@ -68,7 +68,7 @@ class Trajectory():
         with open(f"{output_folder}/distance.csv", 'w') as csvfile: 
             writer = csv.writer(csvfile)
 
-            for track_id in tqdm (range (22), desc="Loading..."):
+            for track_id in tqdm (range (23), desc="Loading..."):
                 if not os.path.exists(f"{input_folder}/{track_id}.csv"):
                     continue
                 df = pd.read_csv(f"{input_folder}/{track_id}.csv")
@@ -85,7 +85,7 @@ class Trajectory():
                 dst = np.sqrt(np.power(x_st-x_ed,2)+np.power(y_st-y_ed,2))
                 total_dst = dst.sum()
                 writer.writerow([str(track_id), total_dst]) 
-
+            
                 x, y = avg_formation
                 x_offset = 10
                 if track_id <10:
@@ -95,6 +95,7 @@ class Trajectory():
                 write_number(img, str(track_id), 
                         np.array([[x-x_offset],[y+5]]),font = 0.5)
 
+                
 
         cv.imwrite(f"{output_folder}/avg_formation.png", img)
 
