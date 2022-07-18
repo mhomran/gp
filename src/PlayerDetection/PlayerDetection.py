@@ -24,7 +24,7 @@ LOW_TH = 30
 HIGH_TH = 200
 
 class PlayerDetection:
-    def __init__(self, MF, IMG, BGIMG):
+    def __init__(self, MF, IMG, BGIMG=None):
         self.backSub = cv.createBackgroundSubtractorMOG2(
             BACK_SUB_HISTORY, BACK_SUB_THRE, BACK_SUB_DETECT_SHADOW)
         self.kernel = cv.getStructuringElement(cv.MORPH_RECT, KERNEL_SIZE)

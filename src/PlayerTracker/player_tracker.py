@@ -1,10 +1,5 @@
-from multiprocessing.connection import wait
-import os
-
-from cv2 import CAP_PROP_FPS, CAP_PROP_POS_FRAMES
 from PlayerDetection.ImageClass import ImageClass
 from PlayerDetection.PlayerDetection import PlayerDetection
-from PlayerDetection.TagWriter import TagWriter
 from Stitcher.stitcher import Stitcher
 from Undistorter.undistorter import Undistorter
 from ModelField.model_field import GUI_WIDTH, ModelField
@@ -15,6 +10,7 @@ import cv2 as cv
 import imutils
 import numpy as np
 import pickle
+import os
 
 class PlayerTracker:
   # undistortion parameter
@@ -80,10 +76,10 @@ class PlayerTracker:
 
     self.saved_frames_no = end - start 
     self.learning_frames = learning_frames
-    lcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
-    mcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames)
-    rcap.set(CAP_PROP_POS_FRAMES, start-self.learning_frames-2)
-    self.fps = lcap.get(CAP_PROP_FPS)
+    lcap.set(cv.CAP_PROP_POS_FRAMES, start-self.learning_frames)
+    mcap.set(cv.CAP_PROP_POS_FRAMES, start-self.learning_frames)
+    rcap.set(cv.CAP_PROP_POS_FRAMES, start-self.learning_frames-2)
+    self.fps = lcap.get(cv.CAP_PROP_FPS)
 
     # background subtractor
     self.bg_enable = bg_enable
@@ -124,9 +120,8 @@ class PlayerTracker:
     self.save_pd_init = False
     self.pd_frame_no = pd_frame_no
     if self.pd_enable and self.mf_enable:
-      bg_img = cv.imread('./background.png')
       self.IMG = ImageClass()
-      self.PD = PlayerDetection(MF, self.IMG, bg_img)
+      self.PD = PlayerDetection(MF, self.IMG)
     
     # tracker 
     self.player_tracker = PlayerTracking(MF, self.canvas, base_path=output_folder)
