@@ -328,14 +328,22 @@ class ModelField:
 
         # Which half the point exists in to know which H_inv to use
         H_inv = None
-        # y = ax + b
+
         A, B = self.upper_center, self.bottom_center
-        a = (A[1] - B[1])/(A[0] - B[0])
-        b = A[1] - a * A[0]
-        if (y_img - a * x_img - b) > 0:
-            H_inv = self.lH_inv
+        vl = A[0] == B[0]
+        if vl:
+            if x_img > A[0]:
+                H_inv = self.rH_inv
+            else:
+                H_inv = self.lH_inv
         else:
-            H_inv = self.rH_inv
+            # y = ax + b
+            a = (A[1] - B[1])/(A[0] - B[0])
+            b = A[1] - a * A[0]
+            if (y_img - a * x_img - b) > 0:
+                H_inv = self.lH_inv
+            else:
+                H_inv = self.rH_inv
 
         q = cv.perspectiveTransform(np.array([[q_img]], np.float32), H_inv)
         q = tuple(q.squeeze())
