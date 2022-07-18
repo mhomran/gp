@@ -56,12 +56,13 @@ class Trajectory():
             plt.xlim((0, w))
             plt.ylim((0, h))
 
+            plt.gca().invert_yaxis()
+
             plt.savefig(f"{output_folder}/{track_id}.png")
 
             plt.close(fig)
 
     def save_distance(self, input_folder, output_folder=""):
-        print(input_folder)
         img = cv.imread("h.png")
 
         with open(f"{output_folder}/distance.csv", 'w') as csvfile: 
@@ -94,7 +95,6 @@ class Trajectory():
                 write_number(img, str(track_id), 
                         np.array([[x-x_offset],[y+5]]),font = 0.5)
 
-                print(total_dst, avg_formation)
 
         cv.imwrite(f"{output_folder}/avg_formation.png", img)
 

@@ -50,6 +50,8 @@ class Heatmap():
             plt.xlim((0, w))
             plt.ylim((0, h))
 
+            plt.gca().invert_yaxis()
+
             plt.savefig(f"{output_folder}/{track_id}.png")
 
             plt.close(fig)
