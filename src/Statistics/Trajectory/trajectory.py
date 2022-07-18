@@ -2,11 +2,15 @@ import pandas as pd
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
+import csv
 from tqdm import tqdm
 import numpy as np
 import pickle 
 import os
+import cv2 as cv
+from MultiObjectTracking.helper import _write_hint as write_number
+
+COLORS = [(255,255,255),(0,0,255),(0,255,255)]
 
 class Trajectory():
     def __init__(self, MF) -> None:
@@ -55,6 +59,44 @@ class Trajectory():
             plt.savefig(f"{output_folder}/{track_id}.png")
 
             plt.close(fig)
+
+    def save_distance(self, input_folder, output_folder=""):
+        print(input_folder)
+        img = cv.imread("h.png")
+
+        with open(f"{output_folder}/distance.csv", 'w') as csvfile: 
+            writer = csv.writer(csvfile)
+
+            for track_id in tqdm (range (22), desc="Loading..."):
+                if not os.path.exists(f"{input_folder}/{track_id}.csv"):
+                    continue
+                df = pd.read_csv(f"{input_folder}/{track_id}.csv")
+
+                y, x = df.y.values, df.x.values
+                avg_formation = int(x.mean()), int(y.mean())
+                y, x = self.MF.convert_px2m((y, x))
+
+                x_st = x[:-1]
+                y_st = y[:-1]
+                x_ed = x[1:]
+                y_ed = y[1:]
+
+                dst = np.sqrt(np.power(x_st-x_ed,2)+np.power(y_st-y_ed,2))
+                total_dst = dst.sum()
+                writer.writerow([str(track_id), total_dst]) 
+
+                x, y = avg_formation
+                x_offset = 10
+                if track_id <10:
+                    x_offset = 5
+
+                cv.circle(img, (x, y), 10, COLORS[df.team.values[0]], -1)
+                write_number(img, str(track_id), 
+                        np.array([[x-x_offset],[y+5]]),font = 0.5)
+
+                print(total_dst, avg_formation)
+
+        cv.imwrite(f"{output_folder}/avg_formation.png", img)
 
 def main():
     filehandler = open(f"/home/mhomran/gp/src/modelField.pkl","rb")
