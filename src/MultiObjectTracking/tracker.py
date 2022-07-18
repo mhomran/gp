@@ -110,73 +110,44 @@ class Tracker(object):
         self.p_motion = np.zeros(shape=(len(self.tracks), len(detections)))
         self.p_color = np.zeros(shape=(len(self.tracks), len(detections)))
 
-        # global state
-        dtn_by_trk = {}
-        trk_by_dtn = {}
         self.frame_count +=1
         #reformate the detections data
         for i in range(len(detections)):
             detections[i] =np.array([[detections[i][0]],[detections[i][1]]])
-
-        for n, track in enumerate(self.tracks):
-            # get prediction
-            predicted_state = track.KF.predict()
-            track.prediction = predicted_state
-
-
-
-            # looping over detections and connect them to tracks
-            for m, detection in enumerate(detections):
-                # calc motion model
-                p_mo =  self.motion_model.calc(predicted_state, detection)
-                self.p_motion[n][m] = p_mo
-                
-                # if predicted state is probable  
-                if self.p_motion[n][m] > P_MOTION_TH :    
-                    # calc appearance model 
-                    a = self._get_BB_as_img(detection, frame)
-                    p_col = self.appearance_model.calc(a, track.track_bb)
-                    self.p_color[n][m] = p_col
-
-
-                    if self.p_motion[n][m]*self.p_color[n][m]> P_COLOR_TH *P_MOTION_TH:
-                        # adding to global state
-                        if n in dtn_by_trk: dtn_by_trk[n].add(m) 
-                        else: dtn_by_trk[n] = {m}
-                        
-                        # inverse dictionary
-                        if m in trk_by_dtn: trk_by_dtn[m].add(n)
-                        else: trk_by_dtn[m] = {n}
-        
-        
-
-        ref_det_by_trk = copy.deepcopy(dtn_by_trk)
-        for m in trk_by_dtn:
-            # maxium for each model
-            max_p_colmo = np.max(self.p_color.T[m] * (self.p_motion.T[m]))
-            max_p_mo = np.max(self.p_motion.T[m])
-            for n in trk_by_dtn[m]:
-
-                p_colmo_n = self.p_color[n][m] * self.p_motion[n][m]
-                p_mo_n = self.p_motion[n][m]
-                if p_colmo_n < max_p_colmo :
-                    if n in dtn_by_trk and m in dtn_by_trk[n]: 
-                        dtn_by_trk[n].remove(m)
-
-
-        
+        # global state
+        dtn_by_trk,trk_by_dtn,ref_det_by_trk = self._calc_global_state(detections,frame)
         # initialization for detection -> track mapping
         assignment = [-1] * len(self.tracks)
-        sortedTrack = sorted(self.tracks,key= lambda x:x.skipped_frames)
-
-
         
-
+        # getting detections without tracks
         un_assigned_detects = []
         for i in range(len(detections)):
             un_assigned_detects.append(i)
-                
-            
+
+        self._initial_guess(dtn_by_trk,assignment,un_assigned_detects)
+        # getting tracks without detections
+        un_assigned_tracks = []
+        for i in range(len(assignment)):
+            if (assignment[i] == -1):
+                self.tracks[i].skipped_frames += 1
+                un_assigned_tracks.append(self.tracks[i].track_id)
+        
+        ref_un_assigned_detects = un_assigned_detects.copy()
+        ref_un_assigned_tracks = un_assigned_tracks.copy()
+
+        # pass1
+        self._pass1(detections,frame,assignment,ref_un_assigned_tracks,ref_un_assigned_detects)
+        # Pass 2 
+        self._pass2(assignment,ref_un_assigned_tracks,ref_un_assigned_detects)
+        # Pass 3
+        occuluded_trks = self._pass3(detections,assignment,ref_un_assigned_tracks,ref_det_by_trk)
+        # Update KalmanFilter state, lastResults and tracks trace
+        self._update_kalman(assignment,detections,occuluded_trks,frame)
+        # Write tracks trace to file
+        self._write_tracks_to_disk(detections,assignment)
+    
+    def _initial_guess(self,dtn_by_trk,assignment,un_assigned_detects):
+        sortedTrack = sorted(self.tracks,key= lambda x:x.skipped_frames)
         for track in sortedTrack:
             id = track.track_id                
             if id in dtn_by_trk and len(dtn_by_trk[id]) > 0:
@@ -194,26 +165,8 @@ class Tracker(object):
                 assignment[id] = max_detection
                 if max_detection in un_assigned_detects:
                     un_assigned_detects.remove(max_detection)
-
-
-
-        # getting tracks without detections
-        un_assigned_tracks = []
-        for i in range(len(assignment)):
-            if (assignment[i] == -1):
-                self.tracks[i].skipped_frames += 1
-                un_assigned_tracks.append(self.tracks[i].track_id)
-
-        
-        un_assinged_tracks = []
-        for track_id,assign in enumerate(assignment):
-            if assign == -1 :
-                un_assinged_tracks.append(track_id)
-
-        ref_un_assigned_detects = un_assigned_detects.copy()
-        ref_un_assigned_tracks = un_assinged_tracks.copy()
-
-        # Save lost tracks (rasen fel halal)
+    
+    def _pass1(self,detections,frame,assignment,ref_un_assigned_tracks,ref_un_assigned_detects):
         for track_id in ref_un_assigned_tracks:
             track = self.tracks[track_id]
 
@@ -238,15 +191,7 @@ class Tracker(object):
                 assignment[track_id] = max_detect
                 ref_un_assigned_detects.remove(max_detect)
                 ref_un_assigned_tracks.remove(track_id)
-
-                
-                        
-
-
-
-        
-        
-        # Pass 2 
+    def _pass2(self,assignment,ref_un_assigned_tracks,ref_un_assigned_detects):
         for track_id in ref_un_assigned_tracks:
             max_detect = -1
             max_p = -np.inf
@@ -263,10 +208,7 @@ class Tracker(object):
                 ref_un_assigned_detects.remove(max_detect) 
                 ref_un_assigned_tracks.remove(track_id)
                 
-
-        
-
-        # Pass 3
+    def _pass3(self,detections,assignment,ref_un_assigned_tracks,ref_det_by_trk):
         occuluded_trks = []
         for track_id in ref_un_assigned_tracks:
             if track_id in ref_det_by_trk:
@@ -313,18 +255,66 @@ class Tracker(object):
     
                     last_pos = np.array(self.tracks[track_id].last_measurment)
                     occluded_det = detections[max_p_col_det]
-                    pred_pos = track.prediction
+                    
                     new_det = np.round(np.mean(np.array([last_pos, occluded_det]), axis= 0))
                     new_det = np.round(0.7 * last_pos + 0.3 * occluded_det)
-                    pred_pos = self.tracks[track_id].prediction
                     assignment[track_id] = len(detections)
                     detections.append(new_det)
                     ref_un_assigned_tracks.remove(track_id)
 
                     occuluded_trks.append(track_id)
+        return occuluded_trks
 
-    
+    def _calc_global_state(self,detections,frame):
+        dtn_by_trk = {}
+        trk_by_dtn = {}
+        for n, track in enumerate(self.tracks):
+            # get prediction
+            predicted_state = track.KF.predict()
+            track.prediction = predicted_state
+
+
+
+            # looping over detections and connect them to tracks
+            for m, detection in enumerate(detections):
+                # calc motion model
+                p_mo =  self.motion_model.calc(predicted_state, detection)
+                self.p_motion[n][m] = p_mo
                 
+                # if predicted state is probable  
+                if self.p_motion[n][m] > P_MOTION_TH :    
+                    # calc appearance model 
+                    a = self._get_BB_as_img(detection, frame)
+                    p_col = self.appearance_model.calc(a, track.track_bb)
+                    self.p_color[n][m] = p_col
+
+
+                    if self.p_motion[n][m]*self.p_color[n][m]> P_COLOR_TH *P_MOTION_TH:
+                        # adding to global state
+                        if n in dtn_by_trk: dtn_by_trk[n].add(m) 
+                        else: dtn_by_trk[n] = {m}
+                        
+                        # inverse dictionary
+                        if m in trk_by_dtn: trk_by_dtn[m].add(n)
+                        else: trk_by_dtn[m] = {n}
+        
+        
+
+        ref_det_by_trk = copy.deepcopy(dtn_by_trk)
+        for m in trk_by_dtn:
+            # maxium for each model
+            max_p_colmo = np.max(self.p_color.T[m] * (self.p_motion.T[m]))
+            max_p_mo = np.max(self.p_motion.T[m])
+            for n in trk_by_dtn[m]:
+
+                p_colmo_n = self.p_color[n][m] * self.p_motion[n][m]
+                p_mo_n = self.p_motion[n][m]
+                if p_colmo_n < max_p_colmo :
+                    if n in dtn_by_trk and m in dtn_by_trk[n]: 
+                        dtn_by_trk[n].remove(m)
+        return dtn_by_trk,trk_by_dtn,ref_det_by_trk
+        
+    def _update_kalman(self,assignment,detections,occuluded_trks,frame):
         _dist_tracks = np.zeros((len(self.tracks), len(self.tracks)))
 
         for i, t1 in enumerate(self.tracks):
@@ -335,41 +325,35 @@ class Tracker(object):
                 d = (p1[0][0] - p2[0][0])**2 + (p1[1][0] - p2[1][0])**2
                 _dist_tracks[i][j] = np.sqrt(d)
                 _dist_tracks[j][i] = np.sqrt(d)
-        
         for i in range(len(self.tracks)):
             _dist_tracks[i][i] = np.inf
-            
-
-        
-        # Update KalmanFilter state, lastResults and tracks trace
-        for i in range(len(assignment)):
-            if(assignment[i] != -1):
-                measurement = detections[assignment[i]]
-                coords = (measurement[0][0], measurement[1][0])
-                if i in occuluded_trks:
-                    particle = self.MF.get_nearest_particle(coords)
-                else:
-                    particle = self.particles[coords]
-                self.tracks[i].prediction = self.tracks[i].KF.correct(measurement)
-                self.tracks[i].skipped_frames = 0
                 
-                _min_dist = np.min(_dist_tracks[i])
-                if _min_dist > 70 and i not in occuluded_trks:
-                    self.tracks[i].track_bb = self._get_BB_as_img(measurement, frame)
-                self.tracks[i].trace.append(self.tracks[i].KF.lastResult)
-                if i not in occuluded_trks:
-                    self.tracks[i].last_measurment = self.tracks[i].KF.lastResult
+        for i in range(len(assignment)):
+                if(assignment[i] != -1):
+                    measurement = detections[assignment[i]]
+                    coords = (measurement[0][0], measurement[1][0])
+                    if i in occuluded_trks:
+                        particle = self.MF.get_nearest_particle(coords)
+                    else:
+                        particle = self.particles[coords]
+                    self.tracks[i].prediction = self.tracks[i].KF.correct(measurement)
+                    self.tracks[i].skipped_frames = 0
+                    
+                    _min_dist = np.min(_dist_tracks[i])
+                    if _min_dist > 70 and i not in occuluded_trks:
+                        self.tracks[i].track_bb = self._get_BB_as_img(measurement, frame)
+                    self.tracks[i].trace.append(self.tracks[i].KF.lastResult)
+                    if i not in occuluded_trks:
+                        self.tracks[i].last_measurment = self.tracks[i].KF.lastResult
 
-            else:
-                if self.tracks[i].skipped_frames % 4 == 0 and self.tracks[i].skipped_frames <= 8: 
-                    self.tracks[i].trace.append(self.tracks[i].KF.predict())
-            if(len(self.tracks[i].trace) > self.max_trace_length): del self.tracks[i].trace[0]
-            topview_coords = (self.tracks[i].trace[-1][0][0], self.tracks[i].trace[-1][1][0])
-            topview_particle = self.MF.get_nearest_particle(topview_coords)
-            if topview_particle:
-                self.tracks[i].top_pos = topview_particle.q
-        self._write_tracks_to_disk(detections,assignment)
-    
+                else:
+                    if self.tracks[i].skipped_frames % 4 == 0 and self.tracks[i].skipped_frames <= 8: 
+                        self.tracks[i].trace.append(self.tracks[i].KF.predict())
+                if(len(self.tracks[i].trace) > self.max_trace_length): del self.tracks[i].trace[0]
+                topview_coords = (self.tracks[i].trace[-1][0][0], self.tracks[i].trace[-1][1][0])
+                topview_particle = self.MF.get_nearest_particle(topview_coords)
+                if topview_particle:
+                    self.tracks[i].top_pos = topview_particle.q
     
     def _initialize_csv_files(self):
         exists = os.path.exists(self.base_path +"/stats")
